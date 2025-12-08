@@ -6,6 +6,6 @@
         public string Ad { get; set; } 
         public string Yazar { get; set; } 
         public int YayinYili { get; set; } 
-        public string ISBN { get; set; }    //Kitap numarası ISBN
+        public string ISBN { get; set; }    //Kitap numarası ISBN 
     }
 }
