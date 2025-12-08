@@ -5,6 +5,7 @@ builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
 
+//Program.cs de değişiklik yapıldı
 
 if (!app.Environment.IsDevelopment())
 {
