@@ -1,11 +1,20 @@
-﻿namespace Akıllı_Kütüphane_Yönetim_Sistemi.db_vs_sinif
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Akıllı_Kütüphane_Yönetim_Sistemi.db_vs_sinif
 {
+    [Table("TabloKitap")] //DB üzerindeki TabloKitap isimli tabloyu kullanmak için
     public class Kitap
     {
-        public int Id { get; set; } 
-        public string Ad { get; set; } 
-        public string Yazar { get; set; } 
-        public int YayinYili { get; set; } 
-        public string ISBN { get; set; }    //Kitap numarası ISBN 
+        [Key]
+        public int KitapID { get; set; }
+        public string? KitapAdi { get; set; }
+        public int? KitapAdedi { get; set; }
+        public bool? KitapAlindiMi { get; set; }
+        public int? KategoriID { get; set; }
+        public int? YazarID { get; set; }
+        
+        
+        
     }
 }
