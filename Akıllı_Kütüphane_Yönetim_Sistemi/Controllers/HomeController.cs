@@ -17,12 +17,21 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Controllers
 
         public IActionResult Index()
         {
-            var kitapServisi = new KitapKriterleri(_context);
+            // Giriş yapmamışsa Login'e git
+            if (HttpContext.Session.GetString("UserSession") == null)
+            {
+                return RedirectToAction("Login", "Account");
+            }
+            return View();
+        }
+        
+        public IActionResult KitapListesi()
+        {
+            var kitapYonetimi = new Akıllı_Kütüphane_Yönetim_Sistemi.db_özellikler.KitapOzellikleri(_context);
+            var gosterilecekKitaplar = kitapYonetimi.TumKitaplariGetir();
 
-            var gosterilecekKitaplar = kitapServisi.ListelemekIcinKitaplariHazirla();
             return View(gosterilecekKitaplar);
         }
-
         public IActionResult KitapEkle()
         {
             return View();
@@ -31,25 +40,25 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Controllers
         [HttpPost]
         public IActionResult KitapEkle(Kitap gelenKitap)
         {
-            var kitapServisi = new KitapKriterleri(_context);
+            var kitapYonetimi = new KitapKriterleri(_context);
 
-            kitapServisi.KitabiKontrolEtVeEkle(gelenKitap);
+            kitapYonetimi.KitabiKontrolEtVeEkle(gelenKitap);
             return RedirectToAction("Index");
         }
 
         public IActionResult KitapSil(int id)
-        {
-            var kitapServisi = new KitapKriterleri(_context);
+        {   
+            var kitapYonetimi = new KitapKriterleri(_context);
 
-            kitapServisi.KitabiSistemdenKaldir(id);
+            kitapYonetimi.KitabiSistemdenKaldir(id);
             return RedirectToAction("Index");
         }
 
         public IActionResult KitapDuzenle(int id)
         {
-            var kitapServisi = new KitapKriterleri(_context);
+            var kitapYonetimi = new KitapKriterleri(_context);
 
-            var bulunanKitap = kitapServisi.DuzenlenecekKitabiGetir(id);
+            var bulunanKitap = kitapYonetimi.DuzenlenecekKitabiGetir(id);
 
             if (bulunanKitap == null) return RedirectToAction("Index");
 
@@ -59,9 +68,9 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Controllers
         [HttpPost]
         public IActionResult KitapDuzenle(Kitap gelenKitap)
         {
-            var kitapServisi = new KitapKriterleri(_context);
+            var kitapYonetimi = new KitapKriterleri(_context);
 
-            kitapServisi.KitapBilgileriniGuncelle(gelenKitap);
+            kitapYonetimi.KitapBilgileriniGuncelle(gelenKitap);
             return RedirectToAction("Index");
         }
     }

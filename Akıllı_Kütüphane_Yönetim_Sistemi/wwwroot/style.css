@@ -1,0 +1,220 @@
+@import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap');
+
+:root {
+    --bg-color: #fdfbf7;
+    --card-bg: #ffffff;
+    --primary: #ffcfdf;
+    --secondary: #a5dee5;
+    --accent: #e0f9b5;
+    --text-color: #5d5d5d;
+    --border-color: #5d5d5d;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-color);
+    font-family: 'Patrick Hand', cursive;
+    color: var(--text-color);
+    padding: 20px;
+}
+
+/* --- NAVBAR (MENÜ) KISMI --- */
+.navbar {
+    background: var(--card-bg);
+    padding: 15px 30px;
+    border-radius: 15px;
+    border: 3px solid var(--border-color);
+    box-shadow: 4px 4px 0px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+    /* Yan yana dizme komutları */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #ff8fab;
+}
+
+/* MENÜ LİNKLERİ (Sorunlu Olan Kısım Burasıydı) */
+.nav-links {
+    display: flex; /* Yan yana dizer */
+    list-style: none; /* Noktaları kaldırır */
+    gap: 20px; /* Aralarına boşluk koyar */
+    margin: 0;
+    padding: 0;
+    margin-left: auto; /* Sağa yaslar */
+    margin-right: 20px; /* Çıkış butonuyla arasına mesafe koyar */
+}
+
+    .nav-links li a {
+        text-decoration: none;
+        color: #333;
+        font-weight: 500;
+        font-size: 1.2rem;
+        padding: 8px 15px;
+        border-radius: 20px;
+        transition: all 0.3s;
+        border: 2px solid transparent;
+    }
+
+        .nav-links li a:hover,
+        .nav-links li a.active {
+            background-color: var(--primary);
+            border: 2px solid var(--border-color);
+            color: #fff;
+        }
+
+/* Çıkış Butonu */
+.btn-logout {
+    background-color: #ff9aa2;
+    color: white;
+    border: 2px solid var(--border-color);
+    padding: 8px 15px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-family: 'Patrick Hand', cursive;
+    font-size: 1rem;
+}
+
+    .btn-logout:hover {
+        background-color: #ff5c6c;
+        transform: scale(1.05);
+    }
+
+/* --- GENEL ELEMENTLER --- */
+.container {
+    background: var(--card-bg);
+    padding: 2rem;
+    border-radius: 20px;
+    border: 3px solid var(--border-color);
+    box-shadow: 6px 6px 0px rgba(0,0,0,0.1);
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+h1 {
+    color: #ff8fab;
+    margin-bottom: 20px;
+    font-size: 2.5rem;
+    text-align: center;
+}
+
+/* Tablolar */
+.custom-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+    .custom-table th, .custom-table td {
+        padding: 15px;
+        text-align: left;
+        border-bottom: 2px solid #eee;
+    }
+
+    .custom-table th {
+        background-color: var(--secondary);
+        color: white;
+        border: 2px solid var(--border-color);
+        border-radius: 10px;
+    }
+
+/* Profil Kutusu */
+.profil-kutu {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    width: 400px;
+    margin: 0 auto;
+    border: 3px solid #ffcfdf;
+    text-align: center;
+}
+
+/* Butonlar */
+.btn-pastel {
+    width: 100%;
+    padding: 12px;
+    border: 3px solid #5d5d5d;
+    border-radius: 15px;
+    font-family: 'Patrick Hand', cursive;
+    font-size: 1.3rem;
+    cursor: pointer;
+    margin-top: 15px;
+    color: #5d5d5d;
+    font-weight: bold;
+}
+
+.btn-pembe {
+    background-color: #ffcfdf;
+}
+
+.btn-mavi {
+    background-color: #a5dee5;
+}
+
+.btn-yesil {
+    background-color: #e0f9b5;
+}
+
+/* Formlar */
+.form-group {
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+    .form-group label {
+        display: block;
+        font-size: 1.2rem;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid var(--border-color);
+        border-radius: 10px;
+        font-family: 'Patrick Hand', cursive;
+        font-size: 1.1rem;
+    }
+/* --- Şifre Göster/Gizle İkonu İçin Stiller --- */
+.password-container {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+}
+
+    /* Şifre input alanı */
+    .password-container input[type="password"],
+    .password-container input[type="text"] {
+        width: 100%;
+        padding-right: 40px; /* İkon için sağ tarafta boşluk bırak */
+        box-sizing: border-box; /* Padding'i genişliğe dahil et */
+    }
+
+/* Göz İkonu */
+.toggle-password {
+    position: absolute;
+    right: 15px; /* Sağdan mesafe */
+    cursor: pointer;
+    color: #777; /* İkon rengi */
+    font-size: 1.2rem;
+    z-index: 2; /* İnputun üstünde kalsın */
+}
+
+    .toggle-password:hover {
+        color: #333; /* Üzerine gelince koyulaşsın */
+    }

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Profilim</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="logo">
+            <img src="logo.png" alt="Logo" width="30" onerror="this.style.display='none'">
+            <span>Kütüphane</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html" class="nav-item">Ana Sayfa</a></li>
+            <li><a href="kitaplar.html" class="nav-item">Kitaplar</a></li>
+            <li><a href="rezervasyon.html" class="nav-item">Rezervasyon</a></li>
+            <li><a href="odunc.html" class="nav-item">Ödünç</a></li>
+            <li><a href="profil.html" class="nav-item active">Profilim</a></li>
+        </ul>
+        <div class="logout-section">
+            <button onclick="cikisYap()" class="btn-logout">Çıkış Yap 🔴</button>
+        </div>
+    </nav>
+
+    <div class="container" style="background: transparent; border: none; box-shadow: none;">
+        <div class="profil-kutu">
+            <h1 style="color: #ff9aa2;">Profil Bilgileri 👤</h1>
+
+            <div class="form-group">
+                <label>Ad Soyad:</label>
+                <input type="text" id="txtAdSoyad" placeholder="Adınız Soyadınız">
+            </div>
+
+            <div class="form-group">
+                <label>E-Posta (Kimlik):</label>
+                <input type="email" id="txtEmail" readonly style="background-color: #eee; cursor: not-allowed;">
+                <small style="color:red; font-size:0.8rem;">* E-Posta değiştirilemez.</small>
+            </div>
+
+            <div class="form-group">
+                <label>Yeni Şifre:</label>
+                <input type="text" id="txtSifre" placeholder="Yeni şifreni buraya yaz">
+            </div>
+
+            <button onclick="profilGuncelle()" class="btn-pastel btn-pembe">Bilgileri Güncelle 💾</button>
+        </div>
+    </div>
+
+    <script>
+        // DEĞİŞİKLİK KONTROLÜ İÇİN HAFIZA DEĞİŞKENLERİ
+        let orijinalAdSoyad = "";
+        let orijinalSifre = "";
+
+        document.addEventListener("DOMContentLoaded", function () {
+            bilgileriGetir();
+        });
+
+        async function bilgileriGetir() {
+            const email = localStorage.getItem('email');
+            if (!email) {
+                window.location.href = "login.html";
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/kullanici/bilgi/${email}`);
+                if (response.ok) {
+                    const data = await response.json();
+
+                    // Verileri kutucuklara doldur
+                    const tamAd = data.ad + " " + (data.soyad || ""); // Soyad null gelirse boşluk olsun
+                    document.getElementById('txtAdSoyad').value = tamAd.trim();
+                    document.getElementById('txtEmail').value = data.email;
+                    document.getElementById('txtSifre').value = data.sifre;
+
+                    // *** KRİTİK NOKTA: İLK HALİNİ HAFIZAYA ALIYORUZ ***
+                    orijinalAdSoyad = tamAd.trim();
+                    orijinalSifre = data.sifre;
+                }
+            } catch (error) {
+                console.error("Hata:", error);
+            }
+        }
+
+        async function profilGuncelle() {
+            const email = document.getElementById("txtEmail").value;
+            const adSoyad = document.getElementById("txtAdSoyad").value.trim(); // Boşlukları temizle
+            const sifre = document.getElementById("txtSifre").value;
+
+            if (adSoyad === "" || sifre === "") {
+                alert("Ad Soyad ve Şifre boş olamaz!");
+                return;
+            }
+
+            // *** DEĞİŞİKLİK KONTROLÜ ***
+            // Eğer isim aynıysa VE şifre aynıysa -> Uyarı ver ve dur.
+            if (adSoyad === orijinalAdSoyad && sifre === orijinalSifre) {
+                alert("⚠️ Herhangi bir değişiklik yapmadınız!");
+                return; // Fonksiyonu burada bitir, sunucuya gitme.
+            }
+
+            const veri = {
+                email: email,
+                adSoyad: adSoyad,
+                sifre: sifre
+            };
+
+            try {
+                const response = await fetch('/api/kullanici/guncelle', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(veri)
+                });
+
+                const sonuc = await response.json();
+                if (response.ok) {
+                    alert("✅ " + sonuc.mesaj);
+
+                    // Başarılı olursa yeni hali artık orijinal halidir
+                    orijinalAdSoyad = adSoyad;
+                    orijinalSifre = sifre;
+
+                    // Adı güncelle ki ana sayfada görünsün
+                    localStorage.setItem('ad', adSoyad.split(' ')[0]);
+                } else {
+                    alert("❌ Hata: " + sonuc.mesaj);
+                }
+            } catch (error) {
+                alert("Sunucu hatası!");
+            }
+        }
+
+        function cikisYap() {
+            if (confirm("Çıkış yapmak istiyor musun?")) {
+                localStorage.clear();
+                window.location.href = "login.html";
+            }
+        }
+    </script>
+</body>
+</html>

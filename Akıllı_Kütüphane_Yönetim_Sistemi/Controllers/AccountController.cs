@@ -15,7 +15,7 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Controllers
 
        
         [HttpGet]
-        public IActionResult Login()   //Giriş Kısmı
+        public IActionResult Login()   
         {
             return View();
         }
@@ -46,7 +46,7 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Controllers
 
         
         [HttpGet]
-        public IActionResult Register() //Kayıt Olma Kısmı
+        public IActionResult Register() //Kayıt Olma Kısmı sayfası
         {
             return View();
         }

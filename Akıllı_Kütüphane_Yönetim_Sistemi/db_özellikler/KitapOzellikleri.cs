@@ -10,7 +10,7 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.db_özellikler
         
         public KitapOzellikleri(ApplicationDbContext context)
         {
-            _context = context; //burası dışarıdan gelen context i alır ve sınıf içinde kullanır (this.context = context) misali
+            _context = context; 
         }
         // dışarıdan hazır gelen db context i kullanmak için olusturulan constructor
 
@@ -52,14 +52,14 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.db_özellikler
             var aktifOduncIslemler = _context.OduncIslemler
                                              .Where(x => x.TeslimTarihi == null)
                                              .ToList(); 
-            //İADE Edilmemiş verileri bulmak içib teslim edilmemiş kitapları bul
+            //teslim edilmemiş kitapları bul 
 
             foreach (var islem in aktifOduncIslemler)
             {
                 if (islem.AlisTarihi != null)
                 {
                     
-                    DateTime sonTeslim = islem.AlisTarihi.Value.AddDays(14); //son teslim tarihi olarak 14 gün seçtim
+                    DateTime sonTeslim = islem.AlisTarihi.Value.AddDays(14); //son teslim tarihi olarak 14 gün seçili
 
                     
                     islem.SonTeslimTarihi = sonTeslim;  //DB kısmındaki son teslim tarihini güncelle
@@ -71,7 +71,7 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.db_özellikler
                         TimeSpan fark = DateTime.Now - sonTeslim;   //Gün hesaplaması 
                         int gecikenGun = (int)fark.TotalDays;
 
-                        decimal cezaTutari = gecikenGun * 100;      //Gün basına 100 tl ceza tutarı ekle
+                        decimal cezaTutari = gecikenGun * 100;      //Gün basına 100 tl ceza veriliyor
 
                         var mevcutCeza = _context.Cezalar.FirstOrDefault(c => c.IslemID == islem.IslemID);
                          

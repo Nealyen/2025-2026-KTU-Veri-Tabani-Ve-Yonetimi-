@@ -1,8 +1,60 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Ana Sayfa";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="text-center mt-5">
+    <h1 class="display-4">Hoş Geldiniz!</h1>
+    <p class="lead">Kütüphane Yönetim Sistemine Başarıyla Giriş Yaptınız.</p>
+    <hr class="my-4">
+    <p>Yapmak istediğiniz işlemi seçiniz:</p>
+</div>
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+
+        <div class="col-md-3 mb-3">
+            <div class="card text-center shadow h-100">
+                <div class="card-body">
+                    <h5 class="card-title">📚 Kitaplar</h5>
+                    <p class="card-text">Kütüphanedeki tüm kitapları incele ve rezervasyon yap.</p>
+                    <a asp-action="KitapListesi" asp-controller="Home" class="btn btn-primary w-100">Kitapları Görüntüle</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card text-center shadow h-100">
+                <div class="card-body">
+                    <h5 class="card-title">📅 Rezervasyonlar</h5>
+                    <p class="card-text">Bekleyen veya onaylanan rezervasyonlarını gör.</p>
+                    <a href="#" class="btn btn-warning w-100">Rezervasyonlarım</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card text-center shadow h-100">
+                <div class="card-body">
+                    <h5 class="card-title">📖 Ödünç Aldıklarım</h5>
+                    <p class="card-text">Üzerindeki kitapları ve teslim tarihlerini kontrol et.</p>
+                    <a href="#" class="btn btn-info w-100">Ödünç Kitaplar</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card text-center shadow h-100">
+                <div class="card-body">
+                    <h5 class="card-title">👤 Profilim</h5>
+                    <p class="card-text">Şifre değiştirme ve hesap ayarları.</p>
+                    <a href="#" class="btn btn-secondary w-100">Profilime Git</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="text-center mt-5">
+        <a asp-action="Logout" asp-controller="Account" class="btn btn-danger">Oturumu Kapat</a>
+    </div>
 </div>

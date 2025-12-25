@@ -16,32 +16,32 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.db_kriter
 
         public List<Kitap> ListelemekIcinKitaplariHazirla()
         {
-            var kitapSorumlusu = new KitapOzellikleri(_context); //dısarıdan gelen context özellikler kısmında kullanılsın diye cagırıyoruz
-            return kitapSorumlusu.TumKitaplariGetir();
+            var kitapIslemleri = new KitapOzellikleri(_context); //dısarıdan gelen context özellikler kısmında kullanılsın diye cagırıyoruz
+            return kitapIslemleri.TumKitaplariGetir();
         }
 
         public void KitabiKontrolEtVeEkle(Kitap yeniKitap)
         {
-            var kitapSorumlusu = new KitapOzellikleri(_context);
-            kitapSorumlusu.KitapEkle(yeniKitap);
+            var kitapIslemleri = new KitapOzellikleri(_context);   //Kitap listele kısmında kitap ekleme işlemi için kullanılıyor 
+            kitapIslemleri.KitapEkle(yeniKitap);
         }
 
         public void KitabiSistemdenKaldir(int id)
         {
-            var kitapSorumlusu = new KitapOzellikleri(_context);
-            kitapSorumlusu.KitapSil(id);
+            var kitapIslemleri = new KitapOzellikleri(_context);   //Kitap listele kısmında kitap silme işlemi için kullanılıyor
+            kitapIslemleri.KitapSil(id);
         }
 
         public Kitap DuzenlenecekKitabiGetir(int id)
         {
-            var kitapSorumlusu = new KitapOzellikleri(_context);
-            return kitapSorumlusu.TekKitapGetir(id);
+            var kitapIslemleri = new KitapOzellikleri(_context);    //kitap düzenleme kısmında düzenlenecek kitabı getirme işlemi için kullanılıyor
+            return kitapIslemleri.TekKitapGetir(id);
         }
 
-        public void KitapBilgileriniGuncelle(Kitap kitap)
+        public void KitapBilgileriniGuncelle(Kitap kitap)           //kitap düzenleme kısmında kitap bilgilerini güncelleme işlemi için kullanılıyor
         {
-            var kitapSorumlusu = new KitapOzellikleri(_context);
-            kitapSorumlusu.KitapGuncelle(kitap);
+            var kitapIslemleri = new KitapOzellikleri(_context);
+            kitapIslemleri.KitapGuncelle(kitap);
         }
     }
 }

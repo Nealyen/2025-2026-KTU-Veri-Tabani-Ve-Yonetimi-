@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kayıt Ol</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .password-container {
+            position: relative;
+            width: 100%;
+            display: flex;
+            align-items: center;
+        }
+
+            .password-container input {
+                width: 100%;
+                padding-right: 40px;
+                box-sizing: border-box;
+            }
+
+        .toggle-password {
+            position: absolute;
+            right: 15px;
+            cursor: pointer;
+            color: #777;
+            font-size: 1.2rem;
+            z-index: 2;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container" style="width: 400px; text-align: center;">
+        <h1>Kayıt Ol 📝</h1>
+
+        <form id="registerForm" autocomplete="off">
+            <div class="form-group">
+                <label>Ad:</label>
+                <input type="text" id="ad" required autocomplete="off" readonly onfocus="this.removeAttribute('readonly');">
+            </div>
+            <div class="form-group">
+                <label>Soyad:</label>
+                <input type="text" id="soyad" required autocomplete="off" readonly onfocus="this.removeAttribute('readonly');">
+            </div>
+            <div class="form-group">
+                <label>E-Posta:</label>
+                <input type="text" id="email" required autocomplete="off" readonly onfocus="this.removeAttribute('readonly');">
+            </div>
+
+            <div class="form-group">
+                <label>Şifre:</label>
+                <div class="password-container">
+                    <input type="password" id="sifre" required autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly');">
+                    <i class="fa-solid fa-eye toggle-password" id="toggleKayitSifre"></i>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-pastel btn-yesil">Kaydı Tamamla ✅</button>
+        </form>
+
+        <p style="margin-top: 20px;">
+            <a href="login.html">Giriş Yap</a>
+        </p>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+
+            // Ekstra JS Temizliği
+            setTimeout(() => {
+                document.getElementById('ad').value = "";
+                document.getElementById('soyad').value = "";
+                document.getElementById('email').value = "";
+                document.getElementById('sifre').value = "";
+            }, 50);
+
+            // Göz İkonu
+            document.getElementById('toggleKayitSifre').addEventListener('click', function () {
+                const input = document.getElementById('sifre');
+                input.type = input.type === 'password' ? 'text' : 'password';
+                this.classList.toggle('fa-eye');
+                this.classList.toggle('fa-eye-slash');
+            });
+
+            // Kayıt İşlemi
+            document.getElementById("registerForm").addEventListener("submit", function (event) {
+                event.preventDefault();
+
+                const veri = {
+                    Ad: document.getElementById('ad').value,
+                    Soyad: document.getElementById('soyad').value,
+                    Email: document.getElementById('email').value,
+                    Sifre: document.getElementById('sifre').value
+                };
+
+                fetch('/api/kullanici/kayit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(veri)
+                })
+                    .then(async response => {
+                        const sonuc = await response.json();
+
+                        if (response.ok) {
+                            alert("✅ Kayıt Başarılı! Giriş yapabilirsin.");
+                            window.location.href = "login.html";
+                        } else {
+                            alert("⚠️ HATA: " + sonuc.mesaj);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Bağlantı Hatası:', error);
+                        alert("❌ Sunucuya bağlanılamadı!");
+                    });
+            });
+        });
+    </script>
+</body>
+</html>

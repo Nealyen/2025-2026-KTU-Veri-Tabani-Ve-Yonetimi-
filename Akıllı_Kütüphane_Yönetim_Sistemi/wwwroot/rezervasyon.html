@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Rezervasyonlar</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .durum-bekliyor {
+            color: #f39c12;
+            font-weight: bold;
+        }
+
+        .durum-onay {
+            color: green;
+            font-weight: bold;
+        }
+
+        .durum-red {
+            color: red;
+            font-weight: bold;
+        }
+
+        .btn-islem {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            color: white;
+            margin-right: 5px;
+        }
+
+        .btn-onay {
+            background-color: #2ecc71;
+        }
+
+        .btn-red {
+            background-color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="logo">
+            <span>📚 Kütüphane</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html" class="nav-item">Ana Sayfa</a></li>
+            <li><a href="kitaplar.html" class="nav-item">Kitaplar</a></li>
+            <li><a href="rezervasyon.html" class="nav-item active">Rezervasyon</a></li>
+            <li><a href="odunc.html" class="nav-item">Ödünç</a></li>
+            <li><a href="profil.html" class="nav-item">Profilim</a></li>
+        </ul>
+        <div class="logout-section">
+            <button onclick="cikisYap()" class="btn-logout">Çıkış Yap 🔴</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h1 id="baslik" style="margin: 0;">Rezervasyonlar 📅</h1>
+
+            <button id="btnArsivle" onclick="rezervasyonArsivle()" class="btn-pastel"
+                    style="display: none; background-color: #ff9f43; color: white; width: auto; padding: 10px 20px; font-size: 1rem;">
+                📦 Geçmişi Arşivle
+            </button>
+        </div>
+
+        <table class="custom-table">
+            <thead>
+                <tr id="tabloBaslik">
+                </tr>
+            </thead>
+            <tbody id="liste">
+                <tr><td colspan="5">Yükleniyor...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const email = localStorage.getItem('email');
+            const isAdmin = localStorage.getItem('isAdmin') === 'true';
+
+            // --- ADMİN BUTON KONTROLÜ ---
+            if (isAdmin) {
+                document.getElementById('btnArsivle').style.display = 'block';
+            }
+
+            // 1. BAŞLIKLARI AYARLA
+            const baslikSatiri = document.getElementById('tabloBaslik');
+            if (isAdmin) {
+                baslikSatiri.innerHTML = `
+                            <th>Kitap Adı</th>
+                            <th>Talep Tarihi</th>
+                            <th>Kullanıcı (Email)</th>
+                            <th>Durum</th>
+                            <th>Karar</th> `;
+            } else {
+                baslikSatiri.innerHTML = `
+                            <th>Kitap Adı</th>
+                            <th>Talep Tarihi</th>
+                            <th>Durum</th>
+                            <th>İşlem</th> `;
+            }
+
+            // 2. VERİLERİ ÇEK
+            fetch(`/api/rezervasyon/listele?email=${email}&isAdmin=${isAdmin}`)
+                .then(res => res.json())
+                .then(data => {
+                    const tablo = document.getElementById('liste');
+                    tablo.innerHTML = "";
+
+                    if (data.length === 0) {
+                        tablo.innerHTML = "<tr><td colspan='5' style='text-align:center;'>Henüz kayıt yok.</td></tr>";
+                        return;
+                    }
+
+                    data.forEach(item => {
+                        let durumClass = "";
+                        if (item.onayDurumu === 'Bekliyor') durumClass = 'durum-bekliyor';
+                        else if (item.onayDurumu === 'Onaylandı') durumClass = 'durum-onay';
+                        else durumClass = 'durum-red';
+
+                        let durumYazi = `<span class="${durumClass}">${item.onayDurumu}</span>`;
+                        let tarih = new Date(item.talepTarihi).toLocaleDateString("tr-TR");
+                        let satir = "";
+
+                        if (isAdmin) {
+                            let butonlar = "";
+                            if (item.onayDurumu === "Bekliyor") {
+                                butonlar = `
+                                            <button class="btn-islem btn-onay" onclick="kararVer(${item.rezervasyonID}, 'onayla')">Onayla ✅</button>
+                                            <button class="btn-islem btn-red" onclick="kararVer(${item.rezervasyonID}, 'reddet')">Reddet ❌</button>
+                                        `;
+                            } else {
+                                butonlar = "İşlem Yapıldı";
+                            }
+
+                            satir = `<tr>
+                                                <td>${item.kitapAdi}</td>
+                                                <td>${tarih}</td>
+                                                <td>${item.kullaniciEmail}</td>
+                                                <td>${durumYazi}</td>
+                                                <td>${butonlar}</td>
+                                            </tr>`;
+                        } else {
+                            let islemButonu = "";
+                            if (item.onayDurumu === "Bekliyor") {
+                                islemButonu = `<button class="btn-islem" style="background-color:#ff6b6b;" onclick="talepIptal(${item.rezervasyonID})">İptal Et 🗑️</button>`;
+                            } else {
+                                islemButonu = "-";
+                            }
+
+                            satir = `<tr>
+                                                <td>${item.kitapAdi}</td>
+                                                <td>${tarih}</td>
+                                                <td>${durumYazi}</td>
+                                                <td>${islemButonu}</td>
+                                            </tr>`;
+                        }
+                        tablo.innerHTML += satir;
+                    });
+                });
+        });
+
+        // --- ARŞİVLEME FONKSİYONU ---
+        function rezervasyonArsivle() {
+            if (!confirm("⚠️ Onaylanmış veya Reddedilmiş tüm geçmiş kayıtlar arşivlenip buradan silinecek. Onaylıyor musunuz?")) return;
+
+            fetch('/api/rezervasyon/rezervasyon-arsivle', { method: 'POST' })
+                .then(async res => {
+                    const sonuc = await res.json();
+                    alert(sonuc.mesaj);
+                    window.location.reload();
+                })
+                .catch(err => alert("Hata oluştu!"));
+        }
+
+        function kararVer(id, tur) {
+            if (!confirm(`İşlemi onaylıyor musun? (${tur})`)) return;
+
+            fetch(`/api/rezervasyon/${tur}/${id}`, { method: 'POST' })
+                .then(async res => {
+                    const sonuc = await res.json();
+                    alert(sonuc.mesaj);
+                    location.reload();
+                });
+        }
+
+        function talepIptal(id) {
+            if (!confirm("Bu rezervasyon talebini silmek istediğinize emin misiniz?")) return;
+
+            fetch(`/api/rezervasyon/iptal/${id}`, { method: 'DELETE' })
+                .then(async res => {
+                    const sonuc = await res.json();
+                    if (res.ok) {
+                        alert(sonuc.mesaj);
+                        location.reload();
+                    } else {
+                        alert("Hata: " + sonuc.mesaj);
+                    }
+                })
+                .catch(err => alert("Bir hata oluştu!"));
+        }
+
+        function cikisYap() {
+            if (confirm("Çıkış yapmak istiyor musun?")) {
+                localStorage.clear();
+                window.location.href = "login.html";
+            }
+        }
+    </script>
+</body>
+</html>

@@ -6,11 +6,12 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.db_vs_sinif
     [Table("TabloKullanici")]
     public class Kullanici
     {
-        [Key]
-        public string Email { get; set; } 
+        [Key] 
+        public string Email { get; set; }   //mail pk oldu
+
         public string? Ad { get; set; }
         public string? Soyad { get; set; }
         public string? Sifre { get; set; }
-        public bool? IsAdmin { get; set; }  // Kullanıcı Türü
+        public bool? IsAdmin { get; set; } 
     }
 }

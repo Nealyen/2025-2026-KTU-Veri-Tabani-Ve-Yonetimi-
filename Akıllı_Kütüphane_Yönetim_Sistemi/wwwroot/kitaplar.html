@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kitaplar - Pastel Kütüphane</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* --- ORTAK RESİM STİLİ (Tutarlılık için) --- */
+        /* Tüm kitap resim kutuları bu temel mantığı kullanacak */
+        .standard-book-cover {
+            background-color: #f0f0f0; /* Resim yoksa gri zemin */
+            background-size: cover; /* Resmi kutuya sığdır ama sündürme, gerekirse kırp */
+            background-position: center; /* Resmi ortala */
+            background-repeat: no-repeat;
+        }
+
+        /* --- ADMİN PANELİ STİLLERİ --- */
+        .admin-controls {
+            display: none;
+            gap: 15px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #fff8e1;
+            border: 2px dashed #ffecb3;
+            border-radius: 15px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* --- KİTAP GRİD YAPISI (ANA SAYFA) --- */
+        .book-grid {
+            display: grid;
+            /* Kartların genişliğini biraz daralttık ki daha çok kitap sığsın ve dikey dursun */
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 25px;
+            padding: 10px;
+        }
+
+        /* --- KİTAP KARTI (ANA SAYFA) --- */
+        .book-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: 2px solid transparent;
+            display: flex;
+            flex-direction: column;
+        }
+
+            .book-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+                border-color: #ffcfdf;
+            }
+
+        /* Ana sayfadaki resim kutusu */
+        .book-image-main {
+            height: 260px; /* Biraz daha uzun (portre) görünüm */
+            width: 100%;
+        }
+
+        .book-info {
+            padding: 15px;
+            text-align: center;
+            background: #fff;
+            border-top: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 60px;
+        }
+
+        .book-title {
+            font-size: 1.05rem;
+            font-weight: bold;
+            color: #555;
+            margin: 0;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* --- MODAL (PENCERE) GENEL STİLLERİ --- */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-box {
+            background: white;
+            padding: 30px;
+            border-radius: 20px; /* Daha yuvarlak köşeler */
+            width: 450px;
+            border: 4px solid #ffcfdf;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.25);
+            position: relative;
+            text-align: center;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 28px;
+            cursor: pointer;
+            color: #aaa;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+            .close-btn:hover {
+                color: #e74c3c;
+                transform: scale(1.1);
+            }
+
+        /* --- DETAY MODALI ÖZEL STİLLERİ --- */
+        /* Detay penceresindeki büyük resim kutusu */
+        .detail-image-box {
+            width: 180px; /* Sabit genişlik */
+            height: 260px; /* Sabit yükseklik (Ana sayfadaki orana yakın) */
+            margin: 0 auto 25px; /* Ortala ve alttan boşluk bırak */
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.15); /* Biraz gölge ekle */
+        }
+
+        .detail-item {
+            margin: 15px 0;
+            font-size: 1.1rem;
+            color: #555;
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px dashed #eee;
+            padding-bottom: 5px;
+        }
+
+        /* --- SİLME EKRANI (MİNİ GALERİ) STİLLERİ --- */
+        .delete-grid {
+            display: grid;
+            /* Yan yana 3 tane sığacak şekilde ayarla */
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 25px;
+            max-height: 450px;
+            overflow-y: auto;
+            padding: 10px;
+            background: #fcfcfc;
+            border-radius: 10px;
+            border: 2px solid #eee;
+        }
+
+        .mini-card {
+            background: #fff;
+            border: 2px solid #eee;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            position: relative;
+            transition: 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+            .mini-card:hover {
+                border-color: #e74c3c;
+                background-color: #fff5f5;
+                transform: scale(1.03);
+            }
+
+        /* Silme ekranındaki küçük resim kutusu */
+        .mini-card-image {
+            height: 160px; /* Yüksekliği sabitle, dikey görünüm için */
+            width: 100%;
+        }
+
+        .mini-card p {
+            font-size: 0.85rem;
+            padding: 8px;
+            margin: 0;
+            color: #555;
+            font-weight: bold;
+            white-space: nowrap; /* Yazı taşarsa... */
+            overflow: hidden; /* ...gizle ve... */
+            text-overflow: ellipsis; /* ...üç nokta koy */
+        }
+
+        /* --- DİĞER STİLLER (Yükleme alanı vb.) --- */
+        .file-upload-wrapper {
+            margin: 20px 0;
+            border: 2px dashed #ccc;
+            padding: 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            background: #fafafa;
+        }
+
+            .file-upload-wrapper:hover {
+                background: #eee;
+                border-color: #aaa;
+            }
+
+        #previewImage {
+            max-width: 120px;
+            max-height: 160px;
+            margin-top: 15px;
+            display: none;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="logo">
+            <img src="logo.png" alt="Logo" width="30" onerror="this.style.display='none'">
+            <span>Kütüphane</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html" class="nav-item">Ana Sayfa</a></li>
+            <li><a href="kitaplar.html" class="nav-item active">Kitaplar</a></li>
+            <li><a href="rezervasyon.html" class="nav-item">Rezervasyon</a></li>
+            <li><a href="odunc.html" class="nav-item">Ödünç</a></li>
+            <li><a href="profil.html" class="nav-item">Profilim</a></li>
+        </ul>
+        <div class="logout-section">
+            <button onclick="cikisYap()" class="btn-logout">Çıkış Yap 🔴</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div id="adminPanel" class="admin-controls">
+            <h3 style="margin:0; color:#f39c12;">Admin Paneli: </h3>
+            <button class="btn-pastel btn-yesil" style="width:auto;" onclick="modalAc('modalEkle')">➕ Kitap Ekle</button>
+            <button class="btn-pastel btn-logout" style="width:auto; background:#ff6b6b;" onclick="silmeModaliniAc()">🗑️ Kitap Sil</button>
+        </div>
+
+        <h1 style="margin-bottom: 30px;">Tüm Kitaplar 📚</h1>
+
+        <div id="kitapGrid" class="book-grid">
+            <div style="text-align:center; width:100%;">Yükleniyor... ⏳</div>
+        </div>
+    </div>
+
+    <div id="modalDetay" class="modal-overlay">
+        <div class="modal-box">
+            <span class="close-btn" onclick="modalKapat('modalDetay')">&times;</span>
+
+            <div id="detayResim" class="standard-book-cover detail-image-box"></div>
+
+            <h2 id="detayBaslik" style="color:#555; margin-bottom: 20px; font-size: 1.4rem;">Kitap Adı</h2>
+
+            <div class="detail-item">
+                <span>📦 Kalan Stok:</span>
+                <span id="detayStok" style="font-weight:bold;">0</span>
+            </div>
+            <div class="detail-item">
+                <span>👥 Dışarıdaki:</span>
+                <span id="detayDisari" style="font-weight:bold;">0</span>
+            </div>
+
+            <div style="margin-top: 25px;">
+                <button id="btnOduncAl" class="btn-pastel btn-mavi" onclick="">Ödünç Al 📖</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalEkle" class="modal-overlay">
+        <div class="modal-box">
+            <span class="close-btn" onclick="modalKapat('modalEkle')">&times;</span>
+            <h2 style="color:#2ecc71;">Yeni Kitap Ekle 📚</h2>
+
+            <div class="file-upload-wrapper" onclick="document.getElementById('fileInput').click()">
+                <p style="margin:0; color:#888; font-weight:bold;">📸 Kitap Kapağı Seç (Tıkla)</p>
+                <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="resimOnizle(this)">
+                <img id="previewImage" src="" alt="Önizleme">
+            </div>
+
+            <div class="form-group">
+                <label>Kitap Adı:</label>
+                <input type="text" id="yeniKitapAdi" placeholder="Örn: Sefiller">
+            </div>
+            <div class="form-group">
+                <label>Toplam Adet (Stok):</label>
+                <input type="number" id="yeniKitapStok" placeholder="Örn: 10" min="1">
+            </div>
+            <button class="btn-pastel btn-yesil" style="margin-top:20px;" onclick="kitapKaydet()">Kaydet ✅</button>
+        </div>
+    </div>
+
+    <div id="modalSil" class="modal-overlay">
+        <div class="modal-box" style="width: 650px;">
+            <span class="close-btn" onclick="modalKapat('modalSil')">&times;</span>
+            <h2 style="color:#e74c3c;">Kitap Sil ⚠️</h2>
+            <p style="font-size:1rem; color:#666;">Silmek istediğiniz kitabın üzerine tıklayın:</p>
+
+            <div id="silineceklerGrid" class="delete-grid"></div>
+        </div>
+    </div>
+
+    <script>
+        const DEFAULT_IMG = 'https://cdn-icons-png.flaticon.com/512/3330/3330314.png';
+        let secilenResimBase64 = "";
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const email = localStorage.getItem('email');
+            const isAdmin = localStorage.getItem('isAdmin') === 'true';
+
+            if (!email) { window.location.href = "login.html"; return; }
+            if (isAdmin) { document.getElementById('adminPanel').style.display = 'flex'; }
+
+            kitaplariGetir();
+        });
+
+        // --- KARTLARI LİSTELEME (ANA SAYFA) ---
+        function kitaplariGetir() {
+            fetch('/api/kitaplar')
+                .then(res => res.json())
+                .then(data => {
+                    const grid = document.getElementById('kitapGrid');
+                    grid.innerHTML = "";
+
+                    if (data.length === 0) { grid.innerHTML = "<p>Hiç kitap yok.</p>"; return; }
+
+                    data.forEach(kitap => {
+                        let kart = document.createElement('div');
+                        kart.className = 'book-card';
+                        kart.onclick = function () { detayAc(kitap); };
+
+                        let resimSrc = kitap.resimData ? kitap.resimData : DEFAULT_IMG;
+
+                        // Burada 'standard-book-cover' ve 'book-image-main' sınıflarını kullanıyoruz
+                        kart.innerHTML = `
+                                <div class="standard-book-cover book-image-main" style="background-image: url('${resimSrc}');"></div>
+                                <div class="book-info">
+                                    <p class="book-title">${kitap.kitapAdi}</p>
+                                </div>
+                            `;
+                        grid.appendChild(kart);
+                    });
+                });
+        }
+
+        // --- DETAY PENCERESİ ---
+        function detayAc(kitap) {
+            document.getElementById('detayBaslik').innerText = kitap.kitapAdi;
+            document.getElementById('detayStok').innerText = kitap.kalanKitap;
+            document.getElementById('detayDisari').innerText = kitap.alinanKitapSayisi || 0;
+
+            let resimSrc = kitap.resimData ? kitap.resimData : DEFAULT_IMG;
+            // Detay resim kutusunun arka planını güncelle
+            document.getElementById('detayResim').style.backgroundImage = `url('${resimSrc}')`;
+
+            const btn = document.getElementById('btnOduncAl');
+            if (kitap.kalanKitap <= 0) {
+                btn.disabled = true;
+                btn.innerText = "Stok Tükendi ❌";
+                btn.style.background = "#ccc";
+                btn.onclick = null;
+            } else {
+                btn.disabled = false;
+                btn.innerText = "Ödünç Al 📖";
+                btn.style.background = "#a5dee5";
+                btn.onclick = function () { oduncAl(kitap.kitapID); };
+            }
+            modalAc('modalDetay');
+        }
+
+        // --- RESİM SEÇME ---
+        function resimOnizle(input) {
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    const img = document.getElementById('previewImage');
+                    img.src = e.target.result;
+                    img.style.display = 'block';
+                    secilenResimBase64 = e.target.result;
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // --- KİTAP KAYDETME ---
+        // --- KİTAP KAYDETME ---
+        function kitapKaydet() {
+            const ad = document.getElementById('yeniKitapAdi').value.trim(); // Boşlukları temizle
+            const stok = document.getElementById('yeniKitapStok').value;
+
+            if (!ad || !stok) {
+                alert("Lütfen isim ve stok girin!");
+                return;
+            }
+
+            const veri = {
+                KitapAdi: ad,
+                ToplamKitapSayisi: parseInt(stok),
+                KalanKitap: parseInt(stok),
+                AlinanKitapSayisi: 0,
+                ResimData: secilenResimBase64
+            };
+
+            fetch('/api/kitaplar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(veri)
+            })
+                .then(async res => {
+                    // Backend'den gelen cevabı (JSON) oku
+                    const sonuc = await res.json();
+
+                    if (res.ok) {
+                        // İşlem Başarılıysa
+                        alert(sonuc.mesaj); // "Kitap başarıyla eklendi!"
+                        location.reload();
+                    } else {
+                        // Hata varsa (Aynı isimde kitap varsa)
+                        alert("❌ HATA: " + sonuc.mesaj);
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("Sunucu hatası oluştu!");
+                });
+        }
+
+        // --- SİLME EKRANI (MİNİ GALERİ) ---
+        function silmeModaliniAc() {
+            modalAc('modalSil');
+            const grid = document.getElementById('silineceklerGrid');
+            grid.innerHTML = "Yükleniyor...";
+
+            fetch('/api/kitaplar').then(r => r.json()).then(data => {
+                grid.innerHTML = "";
+                data.forEach(k => {
+                    let kart = document.createElement('div');
+                    kart.className = 'mini-card';
+                    kart.onclick = function () { kitapSil(k.kitapID, k.kitapAdi); };
+
+                    let resimSrc = k.resimData ? k.resimData : DEFAULT_IMG;
+
+                    // Burada <img> yerine 'standard-book-cover' ve 'mini-card-image' divi kullanıyoruz
+                    kart.innerHTML = `
+                            <div class="standard-book-cover mini-card-image" style="background-image: url('${resimSrc}');"></div>
+                            <p title="${k.kitapAdi}">${k.kitapAdi}</p>
+                        `;
+                    grid.appendChild(kart);
+                });
+            });
+        }
+
+        function kitapSil(id, ad) {
+            if (confirm("⚠️ '" + ad + "' kitabını silmek istediğine emin misin?")) {
+                fetch(`/api/kitaplar/${id}`, { method: 'DELETE' }).then(res => {
+                    if (res.ok) { alert("Kitap Silindi! 🗑️"); silmeModaliniAc(); location.reload(); }
+                    else alert("Hata! Kitap dışarıda olabilir.");
+                });
+            }
+        }
+
+        function oduncAl(id) {
+            const email = localStorage.getItem('email');
+            if (!confirm("Bu kitabı talep etmek istiyor musun?")) return;
+            const veri = { KitapID: id, KullaniciEmail: email };
+            fetch('/api/rezervasyon/olustur', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(veri)
+            }).then(async res => {
+                const sonuc = await res.json();
+                alert(sonuc.mesaj);
+                if (res.ok) location.reload();
+            });
+        }
+
+        function modalAc(id) { document.getElementById(id).style.display = 'flex'; }
+        function modalKapat(id) {
+            document.getElementById(id).style.display = 'none';
+            if (id === 'modalEkle') {
+                document.getElementById('yeniKitapAdi').value = "";
+                document.getElementById('yeniKitapStok').value = "";
+                document.getElementById('previewImage').style.display = "none";
+                document.getElementById('fileInput').value = "";
+                secilenResimBase64 = "";
+            }
+        }
+        function cikisYap() {
+            if (confirm("Çıkış?")) {
+                localStorage.clear(); window.location.href = "login.html";
+            }
+        }
+        // --- PENCERE DIŞINA TIKLAYINCA KAPATMA ---
+        window.onclick = function (event) {
+            // Eğer tıklanan eleman "modal-overlay" sınıfına sahipse (yani arka plansa)
+            if (event.target.classList.contains('modal-overlay')) {
+                // Tıklanan o modalın ID'sini alıp kapatma fonksiyonuna gönder
+                modalKapat(event.target.id);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Giriş Yap</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .password-container {
+            position: relative;
+            width: 100%;
+            display: flex;
+            align-items: center;
+        }
+
+            .password-container input {
+                width: 100%;
+                padding-right: 40px;
+                box-sizing: border-box;
+            }
+
+        .toggle-password {
+            position: absolute;
+            right: 15px;
+            cursor: pointer;
+            color: #777;
+            font-size: 1.2rem;
+            z-index: 2;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container" style="width: 400px; text-align: center;">
+        <h1>Hoş Geldin! 🌸</h1>
+
+        <form id="loginForm" autocomplete="off">
+            <div class="form-group">
+                <label>E-Posta:</label>
+                <input type="text" id="email" required autocomplete="off" readonly onfocus="this.removeAttribute('readonly');" style="background-color: white;">
+            </div>
+
+            <div class="form-group">
+                <label>Şifre:</label>
+                <div class="password-container">
+                    <input type="password" id="sifre" required autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly');" style="background-color: white;">
+                    <i class="fa-solid fa-eye toggle-password" id="toggleLoginSifre"></i>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-pastel btn-mavi">Giriş Yap 🚀</button>
+        </form>
+
+        <p style="margin-top:20px;">Hesabın yok mu? <a href="register.html">Kayıt Ol</a></p>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+
+            // Ekstra Güvenlik: JS ile de zorla temizle
+            setTimeout(() => {
+                document.getElementById('email').value = "";
+                document.getElementById('sifre').value = "";
+            }, 50);
+
+            // Göz İkonu
+            document.getElementById('toggleLoginSifre').addEventListener('click', function () {
+                const input = document.getElementById('sifre');
+                input.type = input.type === 'password' ? 'text' : 'password';
+                this.classList.toggle('fa-eye');
+                this.classList.toggle('fa-eye-slash');
+            });
+
+            // Giriş İşlemi
+            document.getElementById("loginForm").addEventListener("submit", function (event) {
+                event.preventDefault();
+                const veri = {
+                    Email: document.getElementById("email").value,
+                    Sifre: document.getElementById("sifre").value
+                };
+
+                fetch('/api/kullanici/giris', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(veri)
+                })
+                    .then(async response => {
+                        const sonuc = await response.json();
+                        if (response.ok) {
+                            localStorage.setItem('email', sonuc.email);
+                            localStorage.setItem('ad', sonuc.ad);
+                            localStorage.setItem('isAdmin', sonuc.isAdmin);
+                            alert("Hoş geldin " + sonuc.ad + "! 🚀");
+                            window.location.href = "index.html";
+                        } else {
+                            alert("⛔ Giriş Başarısız: " + sonuc.mesaj);
+                            document.getElementById('sifre').value = "";
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Hata:", err);
+                        alert("❌ Sunucuya bağlanılamadı!");
+                    });
+            });
+        });
+    </script>
+</body>
+</html>

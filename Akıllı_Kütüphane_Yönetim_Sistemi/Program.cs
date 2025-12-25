@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Akıllı_Kütüphane_Yönetim_Sistemi.Data;
 
+
 var builder = WebApplication.CreateBuilder(args);
 
 

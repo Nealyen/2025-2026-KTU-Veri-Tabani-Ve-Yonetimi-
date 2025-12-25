@@ -14,13 +14,12 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Controllers
 
         public KitaplarApiController(ApplicationDbContext context)
         {
-            _context = context; //bağlantı için context'i alıyoruz
+            _context = context; //bağlantı için context'i kullanıyoruz
         }
 
         [HttpGet]
         public List<Kitap> TumKitaplariGetir()
         {
-            // Context'i alıp Kriter sınıfında kullanıyoruz
             var kitapServisi = new KitapKriterleri(_context);
             return kitapServisi.ListelemekIcinKitaplariHazirla();
         }
@@ -33,10 +32,23 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Controllers
         }
 
         [HttpPost]
-        public void KitapEkle(Kitap yeniKitap)
+        public IActionResult KitapEkle(Kitap yeniKitap)
         {
+            // 1. KONTROL: Veritabanında aynı isimde kitap var mı? (Büyük/küçük harf duyarsız olması için ToLower kullanılır)
+            var ayniIsimliKitap = _context.Kitaplar
+                .FirstOrDefault(k => k.KitapAdi.ToLower() == yeniKitap.KitapAdi.ToLower());
+
+            if (ayniIsimliKitap != null)
+            {
+                // Varsa hata fırlat ve işlemi durdur
+                return BadRequest(new { mesaj = "Bu isimde bir kitap zaten sistemde mevcut!" });
+            }
+
+            // Yoksa ekleme işlemine devam et
             var kitapServisi = new KitapKriterleri(_context);
             kitapServisi.KitabiKontrolEtVeEkle(yeniKitap);
+
+            return Ok(new { mesaj = "Kitap başarıyla eklendi! 🎉" });
         }
 
         [HttpPut]
@@ -52,21 +64,17 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Controllers
             var kitapServisi = new KitapKriterleri(_context);
             kitapServisi.KitabiSistemdenKaldir(id);
         }
-        //----------------------------------------------------------- geçici 
         
-        [HttpGet("ceza-hesapla")] // Tarayıcıdan api/kitaplar/ceza-hesapla deyince çalışacak
+        
+        [HttpGet("ceza-hesapla")] 
+        // Tarayıcıdan api/kitaplar/ceza-hesapla deyince çalışacak //Buranın var olması gereksiz , ceza kısmı ödünc alınanlar kısmında gözükecek
         public string CezalariGuncelle()
         {
             var kitapServisi = new KitapKriterleri(_context);
-
-            // Buraya erişmek için Kriter sınıfına da bir köprü (metot) yazmamız gerekecek
-            // Ama şimdilik doğrudan mantığı test etmek için şöyle bir hile yapalım:
-            // (Normalde bunu KitapKriterleri üzerinden çağırmalıyız, şimdi hızlıca test ediyoruz)
-
             var ozellikler = new KitapOzellikleri(_context);
             ozellikler.GecikmeVeCezaKontrolu();
 
-            return "Gecikmiş kitaplar kontrol edildi ve cezalar kesildi/güncellendi.";
+            return "Gecikmiş kitaplar kontrol edildi ve cezalar kesildi/güncellendi.";  //burası silinecek
         }
     }
 }

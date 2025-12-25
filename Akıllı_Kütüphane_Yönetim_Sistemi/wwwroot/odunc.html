@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Ödünç Aldıklarım</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .sure-var {
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .sure-az {
+            color: #e67e22;
+            font-weight: bold;
+        }
+
+        .sure-bitti {
+            color: #c0392b;
+            font-weight: bold;
+        }
+
+        .durum-iade {
+            color: #8e44ad;
+            font-weight: bold;
+            text-decoration: line-through;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="logo">
+            <span>📚 Kütüphane</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html" class="nav-item">Ana Sayfa</a></li>
+            <li><a href="kitaplar.html" class="nav-item">Kitaplar</a></li>
+            <li><a href="rezervasyon.html" class="nav-item">Rezervasyon</a></li>
+            <li><a href="odunc.html" class="nav-item active">Ödünç</a></li>
+            <li><a href="profil.html" class="nav-item">Profilim</a></li>
+        </ul>
+        <div class="logout-section">
+            <button onclick="cikisYap()" class="btn-logout">Çıkış Yap 🔴</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h1 style="margin: 0;">Elimdeki Kitaplar 🎒</h1>
+
+            <button id="btnArsivle" onclick="gecmisiArsivle()" class="btn-pastel"
+                    style="display: none; background-color: #ff9f43; color: white; width: auto; padding: 10px 20px; font-size: 1rem;">
+                📦 Geçmişi Arşivle
+            </button>
+        </div>
+
+        <table class="custom-table">
+            <thead>
+                <tr id="tabloBaslik">
+                </tr>
+            </thead>
+            <tbody id="oduncListesi">
+                <tr><td colspan="7" style="text-align:center;">Yükleniyor... ⏳</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            oduncleriGetir();
+        });
+
+        function oduncleriGetir() {
+            const email = localStorage.getItem('email');
+            const isAdmin = localStorage.getItem('isAdmin') === 'true';
+
+            if (!email) {
+                window.location.href = "login.html";
+                return;
+            }
+
+            // --- ADMİN BUTON KONTROLÜ ---
+            if (isAdmin) {
+                const btnArsivle = document.getElementById('btnArsivle');
+                if (btnArsivle) btnArsivle.style.display = 'block';
+            }
+
+            // 1. BAŞLIKLARI AYARLA (Admin ise 'Kullanıcı' sütunu ekle)
+            const baslik = document.getElementById('tabloBaslik');
+
+            let kullaniciBaslik = isAdmin ? `<th>Kullanıcı</th>` : ``; // Adminse başlık ekle
+
+            let baslikHTML = `
+                <th>Kitap Adı</th>
+                ${kullaniciBaslik}
+                <th>Alış Tarihi</th>
+                <th>Son Teslim</th>
+                <th>Kalan Gün</th>
+                <th>İade Durumu</th>
+                <th>Teslim Tarihi</th>
+                <th>Ceza</th>`;
+
+            baslik.innerHTML = baslikHTML;
+
+            // API'ye isAdmin bilgisini de gönderiyoruz
+            fetch(`/api/rezervasyon/odunc-listele?email=${email}&isAdmin=${isAdmin}`)
+                .then(res => res.json())
+                .then(data => {
+                    const tablo = document.getElementById('oduncListesi');
+                    tablo.innerHTML = "";
+
+                    if (data.length === 0) {
+                        let colCount = isAdmin ? 8 : 7;
+                        tablo.innerHTML = `<tr><td colspan='${colCount}' style='text-align:center;'>Hiç ödünç kitap yok.</td></tr>`;
+                        return;
+                    }
+
+                    data.forEach(item => {
+                        let alisTarihi = new Date(item.alisTarihi);
+                        let sonTeslim = new Date(item.sonTeslimTarihi);
+
+                        let bugun = new Date();
+                        let farkZaman = sonTeslim.setHours(0, 0, 0, 0) - bugun.setHours(0, 0, 0, 0);
+                        let kalanGun = Math.ceil(farkZaman / (1000 * 60 * 60 * 24));
+
+                        let durumYazi = "";
+                        let stil = "";
+                        let butonKodu = "";
+                        let teslimTarihiHTML = "";
+                        let cezaHTML = "-";
+
+                        // Ceza Kontrolü
+                        if (item.paraCezasi && item.paraCezasi > 0) {
+                            cezaHTML = `<span style="color:red; font-weight:bold;">${item.paraCezasi} TL</span>`;
+                        }
+
+                        // İade Durumu Kontrolü
+                        if (item.teslimTarihi != null) {
+                            durumYazi = "İADE EDİLDİ ✅";
+                            stil = "sure-var";
+                            butonKodu = "<b>İşlem Tamam</b>";
+                            let tDate = new Date(item.teslimTarihi).toLocaleDateString("tr-TR");
+                            teslimTarihiHTML = `<span>${tDate}</span>`;
+                        } else {
+                            if (kalanGun < 0) {
+                                durumYazi = `Süre Doldu (${Math.abs(kalanGun)} gün)`;
+                                stil = "sure-bitti";
+                            } else if (kalanGun === 0) {
+                                durumYazi = "Son Gün!";
+                                stil = "sure-az";
+                            } else {
+                                durumYazi = `${kalanGun} Gün Kaldı`;
+                                stil = "sure-var";
+                            }
+
+                            // Sadece Admin İade Alabilir
+                            if (isAdmin) {
+                                butonKodu = `<button class="btn-pastel btn-mavi" onclick="iadeAl(${item.islemID})">🔙 İade Al</button>`;
+                            } else {
+                                butonKodu = "<span style='color:#7f8c8d; font-style:italic;'>Teslim Bekleniyor...</span>";
+                            }
+
+                            teslimTarihiHTML = `<span style="font-weight:bold; font-size:1.2em; color:#ccc;">-</span>`;
+                        }
+
+                        // Admin ise Kullanıcı Emailini tabloya yaz
+                        let kullaniciVeri = isAdmin ? `<td style="font-size:0.9rem; color:#555;">${item.kullaniciEmail}</td>` : ``;
+
+                        let satir = `<tr>
+                            <td>${item.kitapAdi}</td>
+                            ${kullaniciVeri}
+                            <td>${alisTarihi.toLocaleDateString("tr-TR")}</td>
+                            <td>${sonTeslim.toLocaleDateString("tr-TR")}</td>
+                            <td class="${stil}">${durumYazi}</td>
+                            <td>${butonKodu}</td>
+                            <td>${teslimTarihiHTML}</td>
+                            <td>${cezaHTML}</td>
+                        </tr>`;
+
+                        tablo.innerHTML += satir;
+                    });
+                })
+                .catch(err => console.error("Hata:", err));
+        }
+
+        // --- DİĞER FONKSİYONLAR ---
+        function gecmisiArsivle() {
+            if (!confirm("⚠️ DİKKAT: İade edilmiş tüm kayıtlar arşivlenip bu listeden silinecek. Onaylıyor musunuz?")) return;
+
+            fetch('/api/rezervasyon/odunc-arsivle', { method: 'POST' })
+                .then(async res => {
+                    const data = await res.json();
+                    alert(data.mesaj);
+                    window.location.reload();
+                })
+                .catch(err => {
+                    alert("Hata oluştu: " + err);
+                });
+        }
+
+        function iadeAl(id) {
+            if (!confirm("Bu kitabı iade almak ve varsa cezayı onaylamak istiyor musunuz?")) return;
+
+            fetch(`/api/rezervasyon/iade-et/${id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+                .then(async res => {
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.mesaj || "Hata oluştu");
+                    return data;
+                })
+                .then(data => {
+                    let mesaj = data.mesaj;
+                    if (data.ceza > 0) {
+                        mesaj += `\n⚠️ GECİKME CEZASI: ${data.ceza} TL`;
+                    } else {
+                        mesaj += "\n✅ Ceza yok, zamanında teslim.";
+                    }
+                    alert(mesaj);
+                    window.location.reload();
+                })
+                .catch(err => {
+                    alert("İşlem Başarısız: " + err.message);
+                });
+        }
+
+        function cikisYap() {
+            if (confirm("Çıkış?")) {
+                localStorage.clear();
+                window.location.href = "login.html";
+            }
+        }
+    </script>
+</body>
+</html>

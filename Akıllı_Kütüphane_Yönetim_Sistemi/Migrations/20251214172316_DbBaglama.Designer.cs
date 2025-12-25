@@ -4,6 +4,7 @@ using Akıllı_Kütüphane_Yönetim_Sistemi.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Akıllı_Kütüphane_Yönetim_Sistemi.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251214172316_DbBaglama")]
+    partial class DbBaglama
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -58,17 +61,20 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("KitapID"));
 
-                    b.Property<int?>("AlinanKitapSayisi")
+                    b.Property<int?>("KategoriID")
                         .HasColumnType("int");
 
-                    b.Property<int?>("KalanKitap")
+                    b.Property<int?>("KitapAdedi")
                         .HasColumnType("int");
 
                     b.Property<string>("KitapAdi")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("ResimData")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<bool?>("KitapAlindiMi")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("YazarID")
+                        .HasColumnType("int");
 
                     b.HasKey("KitapID");
 
@@ -142,49 +148,12 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Migrations
                     b.Property<string>("OnayDurumu")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime?>("OnayTarihi")
-                        .HasColumnType("datetime2");
-
                     b.Property<DateTime?>("TalepTarihi")
                         .HasColumnType("datetime2");
 
                     b.HasKey("RezervasyonID");
 
                     b.ToTable("TabloRezervasyon");
-                });
-
-            modelBuilder.Entity("Akıllı_Kütüphane_Yönetim_Sistemi.db_vs_sinif.RezervasyonLog", b =>
-                {
-                    b.Property<int>("LogID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("LogID"));
-
-                    b.Property<DateTime>("ArsivlenmeTarihi")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("EskiRezervasyonID")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("KitapID")
-                        .HasColumnType("int");
-
-                    b.Property<string>("KullaniciEmail")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("OnayDurumu")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("OnayTarihi")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("TalepTarihi")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("LogID");
-
-                    b.ToTable("TabloRezervasyonLog");
                 });
 #pragma warning restore 612, 618
         }

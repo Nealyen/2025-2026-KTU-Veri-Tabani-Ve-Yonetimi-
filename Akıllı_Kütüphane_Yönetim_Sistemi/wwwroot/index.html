@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Ana Sayfa</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .welcome-box {
+            background-color: #fff0f5;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+            border: 4px dashed #ffb7b2;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr); /* 3 Yan Yana */
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .menu-item {
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #555;
+            cursor: pointer;
+            border: 2px solid #eee;
+            transition: 0.2s;
+        }
+
+            .menu-item:hover {
+                transform: scale(1.05);
+            }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="logo">
+            <img src="logo.png" alt="Logo" width="30" onerror="this.style.display='none'">
+            <span>Kütüphane</span>
+        </div>
+
+        <ul class="nav-links">
+            <li><a href="index.html" class="nav-item">Ana Sayfa</a></li>
+            <li><a href="kitaplar.html" class="nav-item">Kitaplar</a></li>
+            <li><a href="rezervasyon.html" class="nav-item">Rezervasyon</a></li>
+            <li><a href="odunc.html" class="nav-item">Ödünç</a></li>
+            <li><a href="profil.html" class="nav-item">Profilim</a></li>
+        </ul>
+
+        <div class="logout-section">
+            <button onclick="cikisYap()" class="btn-logout">Çıkış Yap 🔴</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="welcome-box">
+            <h1 id="hosgeldinMesaji">Hoş Geldin! 👋</h1>
+            <p>Kütüphane yönetim sistemine başarıyla giriş yaptın.</p>
+
+            <div class="menu-grid">
+                <div class="menu-item" style="background:#e2f0cb;" onclick="git('kitaplar.html')">📖 Kitapları Listele</div>
+                <div class="menu-item" style="background:#ffdac1;" onclick="git('odunc.html')">🔖 Ödünç İşlemleri</div>
+                <div class="menu-item" style="background:#fff5ba;" onclick="git('rezervasyon.html')">📅 Rezervasyonlar</div>
+
+                <div class="menu-item" style="background:#c7ceea;" onclick="git('profil.html')">👤 Profilim</div>
+                <div class="menu-item" style="background:#ff9aa2; color:white;" onclick="cikisYap()">🚪 Çıkış Yap</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const ad = localStorage.getItem('ad');
+            if (ad) document.getElementById('hosgeldinMesaji').innerText = "Hoş Geldin, " + ad + "! 👋";
+        });
+        function git(url) { window.location.href = url; }
+
+            function cikisYap() {
+            if(confirm("Çıkış yapmak istiyor musun?")) {
+                localStorage.clear();
+            window.location.href = "login.html";
+            }
+        }
+        
+    
+    </script>
+
+</body>
+</html>
