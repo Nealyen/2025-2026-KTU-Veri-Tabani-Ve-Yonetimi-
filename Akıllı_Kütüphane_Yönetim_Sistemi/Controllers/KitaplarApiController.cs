@@ -31,25 +31,7 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Controllers
             return kitapServisi.DuzenlenecekKitabiGetir(id);
         }
 
-        [HttpPost]
-        public IActionResult KitapEkle(Kitap yeniKitap)
-        {
-            // 1. KONTROL: Veritabanında aynı isimde kitap var mı? (Büyük/küçük harf duyarsız olması için ToLower kullanılır)
-            var ayniIsimliKitap = _context.Kitaplar
-                .FirstOrDefault(k => k.KitapAdi.ToLower() == yeniKitap.KitapAdi.ToLower());
-
-            if (ayniIsimliKitap != null)
-            {
-                // Varsa hata fırlat ve işlemi durdur
-                return BadRequest(new { mesaj = "Bu isimde bir kitap zaten sistemde mevcut!" });
-            }
-
-            // Yoksa ekleme işlemine devam et
-            var kitapServisi = new KitapKriterleri(_context);
-            kitapServisi.KitabiKontrolEtVeEkle(yeniKitap);
-
-            return Ok(new { mesaj = "Kitap başarıyla eklendi! 🎉" });
-        }
+        
 
         [HttpPut]
         public void KitapGuncelle(Kitap guncellenecekKitap)
@@ -58,23 +40,49 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Controllers
             kitapServisi.KitapBilgileriniGuncelle(guncellenecekKitap);
         }
 
+        [HttpPost]
+        public IActionResult KitapEkle(Kitap yeniKitap)
+        {
+            var ayniIsimliKitap = _context.Kitaplar
+                .FirstOrDefault(k => k.KitapAdi.ToLower() == yeniKitap.KitapAdi.ToLower());
+
+            if (ayniIsimliKitap != null)
+            {
+                return BadRequest(new { mesaj = "Bu isimde bir kitap zaten sistemde mevcut!" });
+            }
+
+            var kitapServisi = new KitapKriterleri(_context);
+            kitapServisi.KitabiKontrolEtVeEkle(yeniKitap);
+
+            // --- LOGLAMA ---
+            string email = HttpContext.Session.GetString("UserSession") ?? "Admin";
+            string ad = HttpContext.Session.GetString("UserAd") ?? "Admin";
+            string soyad = HttpContext.Session.GetString("UserSoyad") ?? "";
+
+            Loglayici.Kaydet(_context, email, ad, soyad, "İşlem", $"Sisteme '{yeniKitap.KitapAdi}' adlı yeni bir kitap ekledi.");
+
+            return Ok(new { mesaj = "Kitap başarıyla eklendi! 🎉" });
+        }
+
         [HttpDelete("{id}")]
         public void KitapSil(int id)
         {
+            // Silinmeden önce kitabın adını alalım ki loga yazabilelim
+            var kitap = _context.Kitaplar.Find(id);
+            string kitapAdi = kitap != null ? kitap.KitapAdi : "Bilinmeyen Kitap";
+
             var kitapServisi = new KitapKriterleri(_context);
             kitapServisi.KitabiSistemdenKaldir(id);
-        }
-        
-        
-        [HttpGet("ceza-hesapla")] 
-        // Tarayıcıdan api/kitaplar/ceza-hesapla deyince çalışacak //Buranın var olması gereksiz , ceza kısmı ödünc alınanlar kısmında gözükecek
-        public string CezalariGuncelle()
-        {
-            var kitapServisi = new KitapKriterleri(_context);
-            var ozellikler = new KitapOzellikleri(_context);
-            ozellikler.GecikmeVeCezaKontrolu();
 
-            return "Gecikmiş kitaplar kontrol edildi ve cezalar kesildi/güncellendi.";  //burası silinecek
+            //LOG KISMI
+            string email = HttpContext.Session.GetString("UserSession") ?? "Admin";
+            string ad = HttpContext.Session.GetString("UserAd") ?? "Admin";
+            string soyad = HttpContext.Session.GetString("UserSoyad") ?? "";
+
+            if (kitap != null) // Sadece gerçekten silindiyse logla
+            {
+                Loglayici.Kaydet(_context, email, ad, soyad, "İşlem", $"'{kitapAdi}' adlı kitabı sistemden sildi.");
+            }
         }
     }
 }

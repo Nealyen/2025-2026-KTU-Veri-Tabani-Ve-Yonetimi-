@@ -1,13 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Akıllı_Kütüphane_Yönetim_Sistemi.Data;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
-
+// 1. Veritabanı Bağlantısı (Artık appsettings.json'dan okuyor - Güvenli)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer("Server=NEALYEN\\SQLEXPRESS;Database=KutuphaneDB;Trusted_Connection=True;TrustServerCertificate=True"));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// 2. Hafıza (Session) Ayarları
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
@@ -16,14 +16,16 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
+// 3. Controller Servisleri
 builder.Services.AddControllersWithViews();
 
-
+// 4. Swagger (API Testi İçin)
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+// --- UYGULAMA AYARLARI ---
 
 if (!app.Environment.IsDevelopment())
 {
@@ -35,14 +37,15 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
+app.UseStaticFiles(); // HTML, CSS, JS dosyalarını açar
 
 app.UseRouting();
 
 app.UseAuthorization();
 
-app.UseSession();
+app.UseSession(); // Session'ı aktif et
 
+// Varsayılan rota (MVC kalıntısı ama API projelerinde de zararı yok)
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Account}/{action=Login}/{id?}");

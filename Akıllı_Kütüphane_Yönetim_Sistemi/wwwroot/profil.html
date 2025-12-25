@@ -4,14 +4,44 @@
     <meta charset="UTF-8">
     <title>Profilim</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="log-takip.js"></script>
+    <style>
+        .error-msg {
+            color: #e74c3c;
+            font-size: 0.8rem;
+            margin-top: -10px;
+            margin-bottom: 10px;
+            display: none;
+            font-weight: bold;
+        }
+
+        .password-container {
+            position: relative;
+            width: 100%;
+            display: flex;
+            align-items: center;
+        }
+
+            .password-container input {
+                width: 100%;
+                padding-right: 40px;
+                box-sizing: border-box;
+            }
+
+        .toggle-password {
+            position: absolute;
+            right: 15px;
+            cursor: pointer;
+            color: #777;
+            z-index: 2;
+        }
+    </style>
 </head>
 <body>
 
     <nav class="navbar">
-        <div class="logo">
-            <img src="logo.png" alt="Logo" width="30" onerror="this.style.display='none'">
-            <span>Kütüphane</span>
-        </div>
+        <div class="logo"><span>📚 Kütüphane</span></div>
         <ul class="nav-links">
             <li><a href="index.html" class="nav-item">Ana Sayfa</a></li>
             <li><a href="kitaplar.html" class="nav-item">Kitaplar</a></li>
@@ -19,92 +49,136 @@
             <li><a href="odunc.html" class="nav-item">Ödünç</a></li>
             <li><a href="profil.html" class="nav-item active">Profilim</a></li>
         </ul>
-        <div class="logout-section">
-            <button onclick="cikisYap()" class="btn-logout">Çıkış Yap 🔴</button>
-        </div>
+        <div class="logout-section"><button onclick="cikisYapVeLogla()" class="btn-logout">Çıkış Yap 🔴</button></div>
     </nav>
 
     <div class="container" style="background: transparent; border: none; box-shadow: none;">
-        <div class="profil-kutu">
+        <div class="profil-kutu" style="width: 450px;">
             <h1 style="color: #ff9aa2;">Profil Bilgileri 👤</h1>
 
             <div class="form-group">
-                <label>Ad Soyad:</label>
-                <input type="text" id="txtAdSoyad" placeholder="Adınız Soyadınız">
+                <label>Ad:</label>
+                <input type="text" id="txtAd">
+            </div>
+            <div class="form-group">
+                <label>Soyad:</label>
+                <input type="text" id="txtSoyad">
             </div>
 
             <div class="form-group">
-                <label>E-Posta (Kimlik):</label>
-                <input type="email" id="txtEmail" readonly style="background-color: #eee; cursor: not-allowed;">
-                <small style="color:red; font-size:0.8rem;">* E-Posta değiştirilemez.</small>
+                <label>E-Posta:</label>
+                <input type="email" id="txtEmail" readonly style="background-color: #eee; cursor: not-allowed; color:#777;">
+                <small style="color:red; font-size:0.75rem;">* E-Posta değiştirilemez.</small>
+            </div>
+
+            <hr style="margin: 20px 0; border: 1px dashed #ccc;">
+
+            <div class="form-group">
+                <label>Mevcut Şifre (Onay İçin Gerekli):</label>
+                <div class="password-container">
+                    <input type="password" id="txtMevcutSifre" placeholder="Şu anki şifreniz"
+                           autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly');">
+                    <i class="fa-solid fa-eye toggle-password" id="btnMevcutGoster"></i>
+                </div>
             </div>
 
             <div class="form-group">
                 <label>Yeni Şifre:</label>
-                <input type="text" id="txtSifre" placeholder="Yeni şifreni buraya yaz">
+                <small id="errYeniAyni" class="error-msg">⚠️ Yeni şifre mevcut şifre ile aynı olamaz!</small>
+                <input type="password" id="txtYeniSifre" placeholder="Değiştirmek istemiyorsanız boş bırakın" autocomplete="new-password">
             </div>
 
-            <button onclick="profilGuncelle()" class="btn-pastel btn-pembe">Bilgileri Güncelle 💾</button>
+            <div class="form-group">
+                <label>Yeni Şifre (Tekrar):</label>
+                <small id="errTekrarUyumsuz" class="error-msg">⚠️ Yeni şifre ile tekrarı aynı olmak zorunda!</small>
+                <input type="password" id="txtYeniSifreTekrar" placeholder="Yeni şifreyi doğrulayın" autocomplete="new-password">
+            </div>
+
+            <button onclick="profilGuncelle()" id="btnKaydet" class="btn-pastel btn-pembe">Bilgileri Güncelle 💾</button>
         </div>
     </div>
 
     <script>
-        // DEĞİŞİKLİK KONTROLÜ İÇİN HAFIZA DEĞİŞKENLERİ
-        let orijinalAdSoyad = "";
-        let orijinalSifre = "";
-
         document.addEventListener("DOMContentLoaded", function () {
+
+            // 1. GÜVENLİK: Mevcut şifre alanını zorla temizle
+            setTimeout(() => {
+                document.getElementById('txtMevcutSifre').value = "";
+                document.getElementById('txtYeniSifre').value = "";
+                document.getElementById('txtYeniSifreTekrar').value = "";
+            }, 100);
+
             bilgileriGetir();
+
+            // --- VALIDASYONLAR ---
+            document.getElementById('txtYeniSifre').addEventListener('input', function () {
+                const mevcut = document.getElementById('txtMevcutSifre').value;
+                const yeni = this.value;
+                const errBox = document.getElementById('errYeniAyni');
+                if (yeni !== "" && yeni === mevcut) errBox.style.display = 'block';
+                else errBox.style.display = 'none';
+            });
+
+            document.getElementById('txtYeniSifreTekrar').addEventListener('input', function () {
+                const yeni = document.getElementById('txtYeniSifre').value;
+                const tekrar = this.value;
+                const errBox = document.getElementById('errTekrarUyumsuz');
+                if (tekrar !== "" && yeni !== tekrar) errBox.style.display = 'block';
+                else errBox.style.display = 'none';
+            });
+
+            // Şifre Göster/Gizle
+            document.getElementById('btnMevcutGoster').addEventListener('click', function () {
+                const input = document.getElementById('txtMevcutSifre');
+                input.type = input.type === 'password' ? 'text' : 'password';
+                this.classList.toggle('fa-eye');
+                this.classList.toggle('fa-eye-slash');
+            });
         });
 
         async function bilgileriGetir() {
             const email = localStorage.getItem('email');
-            if (!email) {
-                window.location.href = "login.html";
-                return;
-            }
+            if (!email) { window.location.href = "login.html"; return; }
 
             try {
                 const response = await fetch(`/api/kullanici/bilgi/${email}`);
                 if (response.ok) {
                     const data = await response.json();
-
-                    // Verileri kutucuklara doldur
-                    const tamAd = data.ad + " " + (data.soyad || ""); // Soyad null gelirse boşluk olsun
-                    document.getElementById('txtAdSoyad').value = tamAd.trim();
+                    document.getElementById('txtAd').value = data.ad;
+                    document.getElementById('txtSoyad').value = data.soyad || "";
                     document.getElementById('txtEmail').value = data.email;
-                    document.getElementById('txtSifre').value = data.sifre;
-
-                    // *** KRİTİK NOKTA: İLK HALİNİ HAFIZAYA ALIYORUZ ***
-                    orijinalAdSoyad = tamAd.trim();
-                    orijinalSifre = data.sifre;
                 }
-            } catch (error) {
-                console.error("Hata:", error);
-            }
+            } catch (error) { console.error(error); }
         }
 
         async function profilGuncelle() {
             const email = document.getElementById("txtEmail").value;
-            const adSoyad = document.getElementById("txtAdSoyad").value.trim(); // Boşlukları temizle
-            const sifre = document.getElementById("txtSifre").value;
+            const ad = document.getElementById("txtAd").value.trim();
+            const soyad = document.getElementById("txtSoyad").value.trim();
+            const mevcutSifre = document.getElementById("txtMevcutSifre").value;
+            const yeniSifre = document.getElementById("txtYeniSifre").value;
+            const yeniSifreTekrar = document.getElementById("txtYeniSifreTekrar").value;
 
-            if (adSoyad === "" || sifre === "") {
-                alert("Ad Soyad ve Şifre boş olamaz!");
+            if (ad === "" || soyad === "") { alert("Ad ve Soyad boş olamaz!"); return; }
+
+            // Mevcut şifre zorunlu kontrolü
+            if (mevcutSifre === "") {
+                alert("⚠️ GÜVENLİK UYARISI: Değişiklikleri onaylamak için MEVCUT ŞİFRENİZİ girmelisiniz!");
+                document.getElementById('txtMevcutSifre').focus();
                 return;
             }
 
-            // *** DEĞİŞİKLİK KONTROLÜ ***
-            // Eğer isim aynıysa VE şifre aynıysa -> Uyarı ver ve dur.
-            if (adSoyad === orijinalAdSoyad && sifre === orijinalSifre) {
-                alert("⚠️ Herhangi bir değişiklik yapmadınız!");
-                return; // Fonksiyonu burada bitir, sunucuya gitme.
+            if (yeniSifre !== "") {
+                if (yeniSifre !== yeniSifreTekrar) { alert("❌ Yeni şifreler birbiriyle uyuşmuyor!"); return; }
+                if (yeniSifre === mevcutSifre) { alert("❌ Yeni şifre eskisiyle aynı olamaz!"); return; }
             }
 
             const veri = {
                 email: email,
-                adSoyad: adSoyad,
-                sifre: sifre
+                ad: ad,
+                soyad: soyad,
+                mevcutSifre: mevcutSifre,
+                yeniSifre: yeniSifre
             };
 
             try {
@@ -115,17 +189,18 @@
                 });
 
                 const sonuc = await response.json();
+
                 if (response.ok) {
                     alert("✅ " + sonuc.mesaj);
-
-                    // Başarılı olursa yeni hali artık orijinal halidir
-                    orijinalAdSoyad = adSoyad;
-                    orijinalSifre = sifre;
-
-                    // Adı güncelle ki ana sayfada görünsün
-                    localStorage.setItem('ad', adSoyad.split(' ')[0]);
+                    if (sonuc.sifreDegisti) {
+                        localStorage.clear();
+                        window.location.href = "login.html";
+                    } else {
+                        localStorage.setItem('ad', ad);
+                        window.location.reload();
+                    }
                 } else {
-                    alert("❌ Hata: " + sonuc.mesaj);
+                    alert("⚠️ Hata: " + sonuc.mesaj);
                 }
             } catch (error) {
                 alert("Sunucu hatası!");

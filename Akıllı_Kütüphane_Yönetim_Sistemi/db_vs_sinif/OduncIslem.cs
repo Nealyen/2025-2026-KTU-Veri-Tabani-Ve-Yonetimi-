@@ -13,7 +13,7 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.db_vs_sinif
         public int? KitapID { get; set; }
         public DateTime? AlisTarihi { get; set; }
         public DateTime? TeslimTarihi { get; set; }
-        public DateTime? SonTeslimTarihi { get; set; }  //14 gün olarak aya
+        public DateTime? SonTeslimTarihi { get; set; }  //14 gün olarak ayarlı
         public decimal? ParaCezasi { get; set; }
 
     }

@@ -1,7 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Akıllı_Kütüphane_Yönetim_Sistemi.Data;
+﻿using Akıllı_Kütüphane_Yönetim_Sistemi.Data;
 using Akıllı_Kütüphane_Yönetim_Sistemi.db_vs_sinif;
-using System.Data.SqlClient;
+using Akıllı_Kütüphane_Yönetim_Sistemi.Models;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Akıllı_Kütüphane_Yönetim_Sistemi.Controllers
 {
@@ -16,7 +16,6 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Controllers
             _context = context;
         }
 
-        // KAYIT OLMA KISMI 
         [HttpPost("kayit")]
         public IActionResult KayitOl([FromBody] Kullanici yeniKullanici)
         {
@@ -24,110 +23,124 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Controllers
             {
                 return BadRequest(new { mesaj = "Bu e-posta zaten kayıtlı!" });
             }
-            
-            yeniKullanici.Sifre = SifreIslemleri.Sifrele(yeniKullanici.Sifre);
 
+            yeniKullanici.Sifre = SifreIslemleri.Sifrele(yeniKullanici.Sifre);
             yeniKullanici.IsAdmin = false;
             _context.Kullanicilar.Add(yeniKullanici);
+
+            // Veritabanına kaydet
             _context.SaveChanges();
+
+            // --- MAIL GÖNDERME KISMI (YENİ) ---
+            string mailIcerik = $@"
+        <h3>Aramıza Hoş Geldin, {yeniKullanici.Ad}! 🌸</h3>
+        <p>Kütüphane yönetim sistemimize kaydın başarıyla oluşturuldu.</p>
+        <p>Artık kitapları inceleyebilir ve rezervasyon yapabilirsin.</p>
+        <br>
+        <b>Pastel Kütüphane Yönetimi</b>
+    ";
+
+            // Arka planda gönder (Kullanıcıyı bekletmesin)
+            Task.Run(() => MailGonderici.Gonder(yeniKullanici.Email, "Hoş Geldin! 🎉", mailIcerik));
+            // ----------------------------------
+
             return Ok(new { mesaj = "Kayıt başarılı!" });
         }
 
-        // GİRİŞ YAPMA KISMI
+        // --- GÜNCELLENEN GİRİŞ KISMI ---
         [HttpPost("giris")]
         public IActionResult GirisYap([FromBody] Kullanici girisYapan)
         {
-            // önce E-Posta ile kullanıcı bulunur
             var kullanici = _context.Kullanicilar.FirstOrDefault(x => x.Email == girisYapan.Email);
 
-            // Kullanıcı yoksa hata versin
-            if (kullanici == null)
+            if (kullanici == null || !SifreIslemleri.Dogrula(girisYapan.Sifre, kullanici.Sifre))
             {
                 return Unauthorized(new { mesaj = "E-posta veya şifre hatalı!" });
             }
 
-            // Şifre Kontrolu hash kısmındaki dogrulama methodu çalısır ve
-            // Girilen şifreyi, veritabanındaki hash ile karşılaştırırız
-            if (!SifreIslemleri.Dogrula(girisYapan.Sifre, kullanici.Sifre))
-            {
-                return Unauthorized(new { mesaj = "E-posta veya şifre hatalı!" });
-            }
+            // 1. Session (Hafıza) Ayarları - İSİMLER ARTIK UNUTULMAYACAK
+            HttpContext.Session.SetString("UserSession", kullanici.Email);
+            HttpContext.Session.SetString("UserAd", kullanici.Ad ?? "");
+            HttpContext.Session.SetString("UserSoyad", kullanici.Soyad ?? "");
 
-            // Şifre doğruysa çalışmaya devam eder
+            if (kullanici.IsAdmin == true)
+                HttpContext.Session.SetString("AdminRole", "Admin");
+
+            // 2. Loglama (Yeni Format: Ad ve Soyad ile)
+            Loglayici.Kaydet(_context, kullanici.Email, kullanici.Ad, kullanici.Soyad, "Giriş", "API üzerinden giriş yapıldı.");
+
             return Ok(new
             {
                 mesaj = "Giriş başarılı",
                 ad = kullanici.Ad,
-                soyad = kullanici.Soyad,
                 email = kullanici.Email,
                 isAdmin = kullanici.IsAdmin
             });
         }
 
-        [HttpGet("bilgi/{email}")]      // Profil bilgilerinin gösterilme kısmı
+        [HttpGet("bilgi/{email}")]
         public IActionResult BilgileriGetir(string email)
         {
             var kullanici = _context.Kullanicilar.FirstOrDefault(x => x.Email == email);
             if (kullanici == null) return NotFound("Kullanıcı bulunamadı.");
 
-            return Ok(new
-            {
-                kullanici.Ad,
-                kullanici.Soyad,
-                kullanici.Email,
-                kullanici.Sifre,
-                kullanici.IsAdmin
-            });
+            return Ok(new { kullanici.Ad, kullanici.Soyad, kullanici.Email, kullanici.IsAdmin });
         }
 
-        // GÜNCELLEME YAPMA KISMI
+        // --- GÜNCELLENEN PROFİL GÜNCELLEME KISMI ---
         [HttpPut("guncelle")]
         public IActionResult ProfilGuncelle([FromBody] KullaniciGuncelleModel gelenVeri)
         {
-            if (gelenVeri == null || string.IsNullOrEmpty(gelenVeri.Email))
-            {
-                return BadRequest(new { mesaj = "Email bilgisi eksik." });
-            }
-
             var kullanici = _context.Kullanicilar.FirstOrDefault(x => x.Email == gelenVeri.Email);
+            if (kullanici == null) return NotFound(new { mesaj = "Kullanıcı bulunamadı." });
 
-            if (kullanici == null)
+            if (!SifreIslemleri.Dogrula(gelenVeri.MevcutSifre, kullanici.Sifre))
             {
-                return NotFound(new { mesaj = "Kullanıcı bulunamadı." });
-            }
-
-            // isim Güncelleme alanı
-            if (!string.IsNullOrEmpty(gelenVeri.AdSoyad))
-            {
-                string[] isimler = gelenVeri.AdSoyad.Trim().Split(' ');
-                if (isimler.Length >= 2)
-                {
-                    kullanici.Ad = isimler[0];
-                    kullanici.Soyad = string.Join(" ", isimler.Skip(1));
-                }
-                else
-                {
-                    kullanici.Ad = isimler[0];
-                    kullanici.Soyad = "";
-                }
+                // HATA LOGU (Yeni Format)
+                Loglayici.Kaydet(_context, gelenVeri.Email, kullanici.Ad, kullanici.Soyad, "Hata", "Profil güncellemede yanlış şifre girildi.");
+                return BadRequest(new { mesaj = "Mevcut şifrenizi yanlış girdiniz!" });
             }
 
-            //  sifre güncelleme alanı
-            if (!string.IsNullOrEmpty(gelenVeri.Sifre))
+            List<string> degisiklikler = new List<string>();
+
+            if (kullanici.Ad != gelenVeri.Ad) degisiklikler.Add($"Adını '{gelenVeri.Ad}' yaptı");
+            if (kullanici.Soyad != gelenVeri.Soyad) degisiklikler.Add($"Soyadını '{gelenVeri.Soyad}' yaptı");
+
+            kullanici.Ad = gelenVeri.Ad;
+            kullanici.Soyad = gelenVeri.Soyad;
+
+            // Session'ı da güncelle ki sayfa yenilenince eski isim gelmesin
+            HttpContext.Session.SetString("UserAd", kullanici.Ad);
+            HttpContext.Session.SetString("UserSoyad", kullanici.Soyad);
+
+            bool sifreDegistiMi = false;
+            if (!string.IsNullOrEmpty(gelenVeri.YeniSifre))
             {
-                kullanici.Sifre = SifreIslemleri.Sifrele(gelenVeri.Sifre);
+                if (SifreIslemleri.Dogrula(gelenVeri.YeniSifre, kullanici.Sifre))
+                    return BadRequest(new { mesaj = "Yeni şifre eskisiyle aynı olamaz." });
+
+                kullanici.Sifre = SifreIslemleri.Sifrele(gelenVeri.YeniSifre);
+                sifreDegistiMi = true;
+                degisiklikler.Add("Şifresini değiştirdi");
             }
 
-            try
+            _context.SaveChanges();
+
+            //LOG KISMI
+            if (degisiklikler.Count > 0)
             {
-                _context.SaveChanges();
-                return Ok(new { mesaj = "Profil ve Şifre başarıyla güncellendi!" });
+                string logMesaji = string.Join(", ", degisiklikler) + ".";
+                Loglayici.Kaydet(_context, gelenVeri.Email, kullanici.Ad, kullanici.Soyad, "Profil Güncelleme", logMesaji);
             }
-            catch (Exception ex)
+            if (sifreDegistiMi)
             {
-                return StatusCode(500, new { mesaj = "Hata oluştu.", detay = ex.Message });
+                Loglayici.Kaydet(_context, gelenVeri.Email, kullanici.Ad, kullanici.Soyad, "Çıkış", "Şifre değişikliği nedeniyle otomatik çıkış yapıldı.");
+
+                // Backend tarafındaki oturumu temizler
+                HttpContext.Session.Clear();
             }
+
+            return Ok(new { mesaj = "Profil güncellendi.", sifreDegisti = sifreDegistiMi });
         }
-
     }
 }

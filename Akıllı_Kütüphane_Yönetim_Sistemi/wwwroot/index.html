@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Ana Sayfa</title>
     <link rel="stylesheet" href="style.css">
+    <script src="log-takip.js"></script>
     <style>
         .welcome-box {
             background-color: #fff0f5;
@@ -57,7 +58,7 @@
         </ul>
 
         <div class="logout-section">
-            <button onclick="cikisYap()" class="btn-logout">Çıkış Yap 🔴</button>
+            <button onclick="cikisYapVeLogla()" class="btn-logout">Çıkış Yap 🔴</button>
         </div>
     </nav>
 
@@ -84,11 +85,6 @@
         });
         function git(url) { window.location.href = url; }
 
-            function cikisYap() {
-            if(confirm("Çıkış yapmak istiyor musun?")) {
-                localStorage.clear();
-            window.location.href = "login.html";
-            }
         }
         
     

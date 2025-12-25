@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kitaplar - Pastel Kütüphane</title>
     <link rel="stylesheet" href="style.css">
+    <script src="log-takip.js"></script>
     <style>
         /* --- ORTAK RESİM STİLİ (Tutarlılık için) --- */
         /* Tüm kitap resim kutuları bu temel mantığı kullanacak */
@@ -237,7 +238,7 @@
             <li><a href="profil.html" class="nav-item">Profilim</a></li>
         </ul>
         <div class="logout-section">
-            <button onclick="cikisYap()" class="btn-logout">Çıkış Yap 🔴</button>
+            <button onclick="cikisYapVeLogla()" class="btn-logout">Çıkış Yap 🔴</button>
         </div>
     </nav>
 
@@ -492,11 +493,6 @@
                 document.getElementById('previewImage').style.display = "none";
                 document.getElementById('fileInput').value = "";
                 secilenResimBase64 = "";
-            }
-        }
-        function cikisYap() {
-            if (confirm("Çıkış?")) {
-                localStorage.clear(); window.location.href = "login.html";
             }
         }
         // --- PENCERE DIŞINA TIKLAYINCA KAPATMA ---

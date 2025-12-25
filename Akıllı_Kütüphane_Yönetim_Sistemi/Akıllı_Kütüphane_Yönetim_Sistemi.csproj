@@ -9,7 +9,6 @@
   <ItemGroup>
     <Folder Include="db_özellikler\" />
     <Folder Include="db_kriter\" />
-    <Folder Include="NewFolder\" />
   </ItemGroup>
 
   <ItemGroup>

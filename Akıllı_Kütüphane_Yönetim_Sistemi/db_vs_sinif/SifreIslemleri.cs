@@ -10,7 +10,7 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi
             return BCrypt.Net.BCrypt.HashPassword(ciplakSifre);
         }
 
-        // yazılı şifre ile veritabanındaki hashli şifreyi kıyaslar
+        // yazılı olan hashli şifre ile veritabanındaki hashli şifreyi kıyaslar
         public static bool Dogrula(string girilenSifre, string veritabaniHash)
         {
             return BCrypt.Net.BCrypt.Verify(girilenSifre, veritabaniHash);

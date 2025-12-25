@@ -18,5 +18,6 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Data
         public DbSet<Rezervasyon> Rezervasyonlar { get; set; }
         public DbSet<RezervasyonLog> RezervasyonLoglari { get; set; }
         public DbSet<OduncLog> OduncLoglari { get; set; }
+        public DbSet<SistemLog> SistemLoglari { get; set; }
     }
 }

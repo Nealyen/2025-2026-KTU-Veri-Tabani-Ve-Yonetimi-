@@ -15,11 +15,26 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Controllers
             _context = context;
         }
 
-        [HttpPost("olustur")] //TALEP OLUSTURMA KISMI
+        // İşlemi yapan profilin adını soyadını bul
+        private (string Ad, string Soyad) KimYapiyor(string email)
+        {
+            // Önce Session'a bakılır
+            string ad = HttpContext.Session.GetString("UserAd");
+            string soyad = HttpContext.Session.GetString("UserSoyad");
+
+            // Session boşsa veritabanından bulunur , nolur nolmaz diye kontrol
+            if (string.IsNullOrEmpty(ad))
+            {
+                var user = _context.Kullanicilar.FirstOrDefault(u => u.Email == email);
+                if (user != null) return (user.Ad, user.Soyad);
+                return ("Bilinmiyor", "");
+            }
+            return (ad, soyad);
+        }
+
+        [HttpPost("olustur")]
         public IActionResult TalepOlustur([FromBody] Rezervasyon yeniTalep)
         {
-           // Kullanıcının elinde teslim edilmemiş (Onaylandı) VEYA henüz onay bekleyen (Bekliyor) kitap var mı kontrol etmek için yapılan ayarlama
-            // Kullanıcıya anlık max sadece 1 kitap hakkı tanıyoruz.
             var aktifTalep = _context.Rezervasyonlar
                 .FirstOrDefault(r => r.KullaniciEmail == yeniTalep.KullaniciEmail
                                   && (r.OnayDurumu == "Onaylandı" || r.OnayDurumu == "Bekliyor"));
@@ -27,58 +42,50 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Controllers
             if (aktifTalep != null)
             {
                 string hataMesaji = aktifTalep.OnayDurumu == "Bekliyor"
-                    ? "Zaten onay bekleyen bir talebiniz var! Önce onu iptal edin."
-                    : "Elinizde zaten teslim etmediğiniz bir kitap var! Önce onu iade edin.";
-
+                    ? "Zaten onay bekleyen bir talebiniz var!"
+                    : "Elinizde zaten teslim etmediğiniz bir kitap var!";
                 return BadRequest(new { mesaj = hataMesaji });
             }
 
-
             var kitap = _context.Kitaplar.Find(yeniTalep.KitapID);
             if (kitap == null) return NotFound(new { mesaj = "Kitap bulunamadı." });
-
             if (kitap.KalanKitap <= 0) return BadRequest(new { mesaj = "Stokta kitap kalmadı!" });
 
-            kitap.KalanKitap -= 1; // Stoktan düşüyoruz
+            kitap.KalanKitap -= 1;
 
             yeniTalep.TalepTarihi = DateTime.Now;
             yeniTalep.OnayDurumu = "Bekliyor";
             _context.Rezervasyonlar.Add(yeniTalep);
-
             _context.SaveChanges();
+
+            // LOG KISMI
+            var (ad, soyad) = KimYapiyor(yeniTalep.KullaniciEmail);
+            Loglayici.Kaydet(_context, yeniTalep.KullaniciEmail, ad, soyad, "Rezervasyon", $"{kitap.KitapAdi} kitabı için talep oluşturuldu.");
+
             return Ok(new { mesaj = "Talep alındı! Admin onayı bekleniyor." });
         }
 
-        //REZERVASYONLARI LİSTELE , Admin olan herkesi görür , Kullanıcılar kendilerininkini
         [HttpGet("listele")]
         public IActionResult Listele([FromQuery] string email, [FromQuery] bool isAdmin)
         {
             if (isAdmin)
             {
-                EskiKayitlariArsivle();
-            }
-
-            if (isAdmin)
-            {
                 var liste = _context.Rezervasyonlar
-                    .ToList() // Önce veriyi listede tutuyoruz
-                    .OrderBy(x => x.OnayDurumu == "Bekliyor" ? 0 : 1) 
-                    .ThenByDescending(x => x.TalepTarihi) // tarihe göre sıralama
+                    .ToList()
+                    .OrderBy(x => x.OnayDurumu == "Bekliyor" ? 0 : 1)
+                    .ThenByDescending(x => x.TalepTarihi)
                     .Select(r => new {
                         r.RezervasyonID,
                         r.KullaniciEmail,
                         r.TalepTarihi,
                         r.OnayDurumu,
-                        // Kitap adı null olmasın diye kontrol edilir
                         KitapAdi = _context.Kitaplar.FirstOrDefault(k => k.KitapID == r.KitapID)?.KitapAdi ?? "Silinmiş Kitap",
                         r.KitapID
                     }).ToList();
-
                 return Ok(liste);
             }
             else
             {
-                // Normal kullanıcı sadece kendi rezervasyonunu görür
                 var liste = _context.Rezervasyonlar
                     .Where(r => r.KullaniciEmail == email)
                     .OrderByDescending(r => r.TalepTarihi)
@@ -93,147 +100,156 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Controllers
             }
         }
 
-        private void EskiKayitlariArsivle()
-        {
-            var silinecekTarih = DateTime.Now.AddDays(-3);
-
-            // Hem reddedilenleri, hem de iade edilenleri bulma kısmı
-            var eskiKayitlar = _context.Rezervasyonlar
-                .Where(x => (x.OnayDurumu == "Reddedildi" || x.OnayDurumu == "İade Edildi")
-                            && x.OnayTarihi < silinecekTarih)
-                .ToList();
-
-            if (eskiKayitlar.Count > 0)
-            {
-                foreach (var eski in eskiKayitlar)
-                {
-                    var log = new RezervasyonLog
-                    {
-                        EskiRezervasyonID = eski.RezervasyonID,
-                        KullaniciEmail = eski.KullaniciEmail,
-                        KitapID = eski.KitapID,
-                        TalepTarihi = eski.TalepTarihi,
-                        OnayTarihi = eski.OnayTarihi,
-                        OnayDurumu = eski.OnayDurumu, // "İade Edildi" olarak kaydedilecek
-                        ArsivlenmeTarihi = DateTime.Now
-                    };
-                    _context.RezervasyonLoglari.Add(log);
-                    _context.Rezervasyonlar.Remove(eski);
-                }
-                _context.SaveChanges();
-            }
-        }
-
-        // onaylama kısmı sadece Admin hesapları yapabilir
+        // Admin Tarafından Onyalama kısmı
         [HttpPost("onayla/{id}")]
         public IActionResult Onayla(int id)
         {
             var talep = _context.Rezervasyonlar.Find(id);
             if (talep == null) return NotFound("Talep bulunamadı.");
 
-            if (talep.OnayDurumu != "Bekliyor") return BadRequest("Bu talep zaten işlem görmüş.");
-
-            // aktif durumu değiştirme
             talep.OnayDurumu = "Onaylandı";
             talep.OnayTarihi = DateTime.Now;
 
-            //  Ödünç Tablosuna Eklenme kısmı onaylanırsa yapılan işlem
             var yeniOdunc = new OduncIslem
             {
                 KitapID = talep.KitapID,
                 KullaniciEmail = talep.KullaniciEmail,
                 AlisTarihi = DateTime.Now,
-                SonTeslimTarihi = DateTime.Now.AddDays(14) // Süre 14 gün
+                SonTeslimTarihi = DateTime.Now.AddDays(14)
             };
             _context.OduncIslemler.Add(yeniOdunc);
 
-            //   "Dışarıdaki Kitap" sayısını artır , kitap alındı
-            // (Stoku zaten talep kısmında geçici olarak düşmüştük
             var kitap = _context.Kitaplar.Find(talep.KitapID);
             if (kitap != null) kitap.AlinanKitapSayisi += 1;
 
             _context.SaveChanges();
+
+            // Loglama kısmı
+            string adminEmail = HttpContext.Session.GetString("UserSession") ?? "Admin";
+            var (adminAd, adminSoyad) = KimYapiyor(adminEmail);
+            Loglayici.Kaydet(_context, adminEmail, adminAd, adminSoyad, "İşlem", $"{talep.KullaniciEmail} kullanıcısının {kitap?.KitapAdi} talebini onayladı.");
+
+            // Mail Gönderme Kısmı
+            string mailIcerik = $@"
+                <h3>Müjde! Kitap Talebin Onaylandı ✅</h3>
+                <p>Merhaba, talep ettiğin <b>{kitap?.KitapAdi}</b> kitabı senin için ayrıldı.</p>
+                <p><b>14 Gün</b> süren başladı. Lütfen zamanında teslim etmeyi unutma.</p>
+                <br>
+                <b>İyi Okumalar!</b>
+            ";
+            Task.Run(() => MailGonderici.Gonder(talep.KullaniciEmail, "Kitap Talebin Onaylandı", mailIcerik));
+
             return Ok(new { mesaj = "Rezervasyon onaylandı ve kitap ödünç verildi! ✅" });
         }
 
-        // Reddetme kısmı sadece Admin
+        // Admin Tarafından Reddetme kısmı
         [HttpPost("reddet/{id}")]
         public IActionResult Reddet(int id)
         {
             var talep = _context.Rezervasyonlar.Find(id);
             if (talep == null) return NotFound("Talep bulunamadı.");
 
-            if (talep.OnayDurumu != "Bekliyor") return BadRequest("Zaten işlem yapılmış.");
-
             talep.OnayDurumu = "Reddedildi";
 
-            // Depoya geri iade ettik , geçici kısımdan ilk bastaki kısma geri döndü
             var kitap = _context.Kitaplar.Find(talep.KitapID);
-            if (kitap != null)
-            {
-                kitap.KalanKitap += 1;
-            }
+            if (kitap != null) kitap.KalanKitap += 1;
 
             _context.SaveChanges();
+
+            // Loglama Kısmı
+            string adminEmail = HttpContext.Session.GetString("UserSession") ?? "Admin";
+            var (adminAd, adminSoyad) = KimYapiyor(adminEmail);
+            Loglayici.Kaydet(_context, adminEmail, adminAd, adminSoyad, "İşlem", $"{talep.KullaniciEmail} kullanıcısının {kitap?.KitapAdi} talebini reddetti.");
+
+            // Mail Gönderme 
+            string mailIcerik = $@"
+                <h3>Kitap Talebin Reddedildi ❌</h3>
+                <p>Merhaba, üzgünüz ama <b>{kitap?.KitapAdi}</b> kitabı için talebin şu an onaylanamadı.</p>
+                <p>Lütfen daha sonra tekrar dene veya başka bir kitap seç.</p>
+            ";
+            Task.Run(() => MailGonderici.Gonder(talep.KullaniciEmail, "Talep Durumu Hakkında", mailIcerik));
+
             return Ok(new { mesaj = "Talep reddedildi, kitap stoğa geri döndü. ❌" });
         }
+
         [HttpGet("odunc-listele")]
         public IActionResult OduncListele(string email, bool isAdmin)
         {
-            // Tabloları birleştir
             var sorgu = from o in _context.OduncIslemler
                         join k in _context.Kitaplar on o.KitapID equals k.KitapID
                         select new { o, k };
 
-            // Admin DEĞİLSE sadece kendi verisini görür
-            // Admin ise herkes listelenir.
-            if (!isAdmin)
-            {
-                sorgu = sorgu.Where(x => x.o.KullaniciEmail == email);
-            }
+            if (!isAdmin) sorgu = sorgu.Where(x => x.o.KullaniciEmail == email);
 
-            // Veriyi Hazırla ve Gönder
-            var sonucListesi = sorgu
-                .OrderByDescending(x => x.o.AlisTarihi)
-                .Select(x => new
-                {
+            var sonucListesi = sorgu.OrderByDescending(x => x.o.AlisTarihi)
+                .Select(x => new {
                     x.o.IslemID,
-                    // Admin kimin aldığını bilsin diye Email'i de gösteriyoruz
                     x.o.KullaniciEmail,
                     KitapAdi = x.k.KitapAdi,
-                    AlisTarihi = x.o.AlisTarihi,
-                    SonTeslimTarihi = x.o.SonTeslimTarihi,
-                    TeslimTarihi = x.o.TeslimTarihi,
+                    x.o.AlisTarihi,
+                    x.o.SonTeslimTarihi,
+                    x.o.TeslimTarihi,
                     x.o.ParaCezasi
-                })
-                .ToList();
+                }).ToList();
 
             return Ok(sonucListesi);
         }
 
+        [HttpDelete("iptal/{id}")]
+        public IActionResult TalepIptal(int id)
+        {
+            var talep = _context.Rezervasyonlar.Find(id);
+            if (talep == null) return NotFound(new { mesaj = "Talep bulunamadı." });
+
+            if (talep.OnayDurumu != "Bekliyor") return BadRequest(new { mesaj = "Sadece 'Bekliyor' durumundaki talepler iptal edilebilir." });
+
+            var kitap = _context.Kitaplar.Find(talep.KitapID);
+            if (kitap != null) kitap.KalanKitap += 1;
+
+            // Silinmeden önce bilgiler alınır
+            string kullaniciEmail = talep.KullaniciEmail;
+            string kitapAdi = kitap != null ? kitap.KitapAdi : "Kitap";
+
+            _context.Rezervasyonlar.Remove(talep);
+            _context.SaveChanges();
+
+            // Loglama Kısmı
+            var (ad, soyad) = KimYapiyor(kullaniciEmail);
+            Loglayici.Kaydet(_context, kullaniciEmail, ad, soyad, "Rezervasyon", $"{kitapAdi} için oluşturduğu talebi iptal etti.");
+
+            // Mail Gönderme 
+            string mailIcerik = $@"
+                <h3>Rezervasyon İptali Başarılı 🗑️</h3>
+                <p>Merhaba,</p>
+                <p><b>{kitapAdi}</b> kitabı için oluşturduğun rezervasyon talebi, isteğin üzerine iptal edilmiştir.</p>
+                <p>Başka kitapları incelemek istersen her zaman bekleriz.</p>
+                <br>
+                <b>Pastel Kütüphane</b>
+            ";
+            Task.Run(() => MailGonderici.Gonder(kullaniciEmail, "Rezervasyon İptal Edildi", mailIcerik));
+
+            return Ok(new { mesaj = "Talep iptal edildi ve silindi. 🗑️" });
+        }
+
+        // İade Alma kısmı (Admin Özel)
         [HttpPost("iade-et/{id}")]
         public IActionResult IadeEt(int id)
         {
             var kayit = _context.OduncIslemler.Find(id);
-
-            if (kayit == null) return NotFound(new { mesaj = $"Kayıt bulunamadı! Gönderilen ID: {id}" });
+            if (kayit == null) return NotFound(new { mesaj = "Kayıt bulunamadı!" });
 
             kayit.TeslimTarihi = DateTime.Now;
 
-            // Ceza Hesaplama Kısmı
+            // Ceza Hesaplama
             if (kayit.TeslimTarihi > kayit.SonTeslimTarihi)
             {
-                TimeSpan fark = kayit.TeslimTarihi.Value - kayit.SonTeslimTarihi.Value; 
+                TimeSpan fark = kayit.TeslimTarihi.Value - kayit.SonTeslimTarihi.Value;
                 int gecikenGun = (int)Math.Ceiling(fark.TotalDays);
-
                 kayit.ParaCezasi = gecikenGun > 0 ? gecikenGun * 100 : 0;
             }
-            else
-            {
-                kayit.ParaCezasi = 0;
-            }
+            else kayit.ParaCezasi = 0;
 
-            // Stok Güncelleme Kısmı
+            // Stok Güncelleme
             var kitap = _context.Kitaplar.Find(kayit.KitapID);
             if (kitap != null)
             {
@@ -241,57 +257,38 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Controllers
                 if (kitap.AlinanKitapSayisi > 0) kitap.AlinanKitapSayisi -= 1;
             }
 
-            _context.SaveChanges();
-
-            return Ok(new
+            var rezervasyon = _context.Rezervasyonlar.FirstOrDefault(r => r.KitapID == kayit.KitapID && r.KullaniciEmail == kayit.KullaniciEmail && r.OnayDurumu == "Onaylandı");
+            if (rezervasyon != null)
             {
-                mesaj = "İade başarıyla alındı.",
-                ceza = kayit.ParaCezasi,
-                teslimTarihi = kayit.TeslimTarihi
-            });
-        }
-
-        // KUllanıcının kendisinin iptal ettiği kısım
-        [HttpDelete("iptal/{id}")]
-        public IActionResult TalepIptal(int id)
-        {
-            var talep = _context.Rezervasyonlar.Find(id);
-            if (talep == null) return NotFound(new { mesaj = "Talep bulunamadı." });
-
-            // Sadece "Bekliyor" olanlar iptal edilebilir. onaylanmıs veya reddedilmiş kitaplara işlem yapılamaz 
-            if (talep.OnayDurumu != "Bekliyor")
-            {
-                return BadRequest(new { mesaj = "Sadece 'Bekliyor' durumundaki talepler iptal edilebilir." });
+                rezervasyon.OnayDurumu = "İade Edildi";
+                rezervasyon.OnayTarihi = DateTime.Now;
             }
 
-            // Kitabın depoya geri eklenme kısmı
-            var kitap = _context.Kitaplar.Find(talep.KitapID);
-            if (kitap != null)
-            {
-                kitap.KalanKitap += 1;
-            }
-
-            //Veri işlemi iptal oldugundan log a kaydolmasın diye veri silinir
-            _context.Rezervasyonlar.Remove(talep);
-
             _context.SaveChanges();
-            return Ok(new { mesaj = "Talep iptal edildi ve silindi. 🗑️" });
+
+            //Loglama
+            string adminEmail = HttpContext.Session.GetString("UserSession") ?? "Admin";
+            var (adminAd, adminSoyad) = KimYapiyor(adminEmail);
+            Loglayici.Kaydet(_context, adminEmail, adminAd, adminSoyad, "İşlem", $"{kayit.KullaniciEmail} kullanıcısından {kitap?.KitapAdi} kitabını iade aldı.");
+
+            // Mail Gönderme Kısmı
+            string mailIcerik = $@"
+                <h3>Teşekkürler! Kitap İadesi Alındı 📚</h3>
+                <p><b>{kitap?.KitapAdi}</b> kitabını başarıyla teslim ettin.</p>
+                {(kayit.ParaCezasi > 0 ? $"<p style='color:red;'><b>⚠️ Gecikme Cezası: {kayit.ParaCezasi} TL</b></p>" : "<p>Zamanında teslim ettiğin için teşekkürler.</p>")}
+            ";
+            Task.Run(() => MailGonderici.Gonder(kayit.KullaniciEmail, "İade İşlemi Tamamlandı", mailIcerik));
+
+            return Ok(new { mesaj = "İade başarıyla alındı.", ceza = kayit.ParaCezasi, teslimTarihi = kayit.TeslimTarihi });
         }
 
+        // ÖDÜNÇ SAYFASINDAKİ TURUNCU BUTON
         [HttpPost("odunc-arsivle")]
         public IActionResult OduncArsivle()
         {
-            // Sadece teslim edilmiş iade tarihleri gelmiş veya geçmiş işlemleri bul
-            var bitmisIslemler = _context.OduncIslemler
-                                    .Where(x => x.TeslimTarihi != null)
-                                    .ToList();
+            var bitmisIslemler = _context.OduncIslemler.Where(x => x.TeslimTarihi != null).ToList();
+            if (!bitmisIslemler.Any()) return Ok(new { mesaj = "Arşivlenecek tamamlanmış işlem bulunamadı." });
 
-            if (!bitmisIslemler.Any())
-            {
-                return Ok(new { mesaj = "Arşivlenecek tamamlanmış işlem bulunamadı." });
-            }
-
-            // Bunları ilgili Log tablosuna taşı
             foreach (var islem in bitmisIslemler)
             {
                 var log = new OduncLog
@@ -305,28 +302,27 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Controllers
                     ParaCezasi = islem.ParaCezasi,
                     ArsivlenmeTarihi = DateTime.Now
                 };
-
-                _context.OduncLoglari.Add(log);      // Loga ekle
-                _context.OduncIslemler.Remove(islem); // Listeden sil
+                _context.OduncLoglari.Add(log);
+                _context.OduncIslemler.Remove(islem);
             }
-
             _context.SaveChanges();
-            return Ok(new { mesaj = $"{bitmisIslemler.Count} adet işlem başarıyla arşivlendi ve listeden temizlendi! 📦" });
+
+            string adminEmail = HttpContext.Session.GetString("UserSession") ?? "Admin";
+            var (adminAd, adminSoyad) = KimYapiyor(adminEmail);
+
+            Loglayici.Kaydet(_context, adminEmail, adminAd, adminSoyad, "Arşivleme", "Ödünç alınmıs kitaplar Loglandı");
+            
+
+            return Ok(new { mesaj = $"{bitmisIslemler.Count} adet işlem arşivlendi! 📦" });
         }
+
+        // REZERVASYON SAYFASINDAKİ TURUNCU BUTON 
         [HttpPost("rezervasyon-arsivle")]
         public IActionResult RezervasyonArsivle()
         {
-            //  Durumu 'Bekliyor' olmayan kayıtları bul
-            var bitmisIslemler = _context.Rezervasyonlar
-                                    .Where(x => x.OnayDurumu != "Bekliyor")
-                                    .ToList();
+            var bitmisIslemler = _context.Rezervasyonlar.Where(x => x.OnayDurumu != "Bekliyor" && x.OnayDurumu != "Onaylandı").ToList();
+            if (!bitmisIslemler.Any()) return Ok(new { mesaj = "Arşivlenecek tamamlanmış işlem yok." });
 
-            if (!bitmisIslemler.Any())
-            {
-                return Ok(new { mesaj = "Arşivlenecek tamamlanmış işlem yok." });
-            }
-
-            // Bunları ilgili Log tablosuna taşı
             foreach (var islem in bitmisIslemler)
             {
                 var log = new RezervasyonLog
@@ -339,12 +335,18 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Controllers
                     OnayDurumu = islem.OnayDurumu,
                     ArsivlenmeTarihi = DateTime.Now
                 };
-
-                _context.RezervasyonLoglari.Add(log);  // Loga ekle
-                _context.Rezervasyonlar.Remove(islem); // Ana tablodan sil
+                _context.RezervasyonLoglari.Add(log);
+                _context.Rezervasyonlar.Remove(islem);
             }
-
             _context.SaveChanges();
+
+            // Loglama Kısmı
+            string adminEmail = HttpContext.Session.GetString("UserSession") ?? "Admin";
+            var (adminAd, adminSoyad) = KimYapiyor(adminEmail);
+
+            Loglayici.Kaydet(_context, adminEmail, adminAd, adminSoyad, "Arşivleme", "Rezervasyon kısmındaki işlemler Loglandı");
+            
+
             return Ok(new { mesaj = $"{bitmisIslemler.Count} adet geçmiş rezervasyon arşivlendi! 📦" });
         }
     }

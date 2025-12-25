@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Ödünç Aldıklarım</title>
     <link rel="stylesheet" href="style.css">
+    <script src="log-takip.js"></script>
     <style>
         .sure-var {
             color: #27ae60;
@@ -41,7 +42,7 @@
             <li><a href="profil.html" class="nav-item">Profilim</a></li>
         </ul>
         <div class="logout-section">
-            <button onclick="cikisYap()" class="btn-logout">Çıkış Yap 🔴</button>
+            <button onclick="cikisYapVeLogla()" class="btn-logout">Çıkış Yap 🔴</button>
         </div>
     </nav>
 
@@ -224,13 +225,6 @@
                 .catch(err => {
                     alert("İşlem Başarısız: " + err.message);
                 });
-        }
-
-        function cikisYap() {
-            if (confirm("Çıkış?")) {
-                localStorage.clear();
-                window.location.href = "login.html";
-            }
         }
     </script>
 </body>

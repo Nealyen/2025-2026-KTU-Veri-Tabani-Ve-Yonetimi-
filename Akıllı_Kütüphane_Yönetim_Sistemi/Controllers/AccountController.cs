@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿
+//PROJENİN HTML KISMI İLE İLGİLENİYOR İŞLEMLER ORASI İLE ALAKALI İŞLEMLER BURADA YAPILIYOR KULLANICICONTROLLERDEN FARKLI 
+using Microsoft.AspNetCore.Mvc;
 using Akıllı_Kütüphane_Yönetim_Sistemi.Data;
 using Akıllı_Kütüphane_Yönetim_Sistemi.db_vs_sinif;
 
@@ -13,27 +15,35 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Controllers
             _context = context;
         }
 
-       
         [HttpGet]
-        public IActionResult Login()   
+        public IActionResult Login()
         {
+            // Zaten giriş yapmışsa direkt anasayfaya at
+            if (HttpContext.Session.GetString("UserSession") != null)
+            {
+                return RedirectToAction("Index", "Home");
+            }
             return View();
         }
 
         [HttpPost]
         public IActionResult Login(string email, string sifre)
         {
-            var user = _context.Kullanicilar
-                               .FirstOrDefault(u => u.Email == email && u.Sifre == sifre);
+            // Önce sadece E-Posta ile kullanıcıyı bul
+            var user = _context.Kullanicilar.FirstOrDefault(u => u.Email == email);
 
-            if (user != null)
+            // Kullanıcı varsa Ve şifresi (Hashli hali) doğruysa
+            if (user != null && SifreIslemleri.Dogrula(sifre, user.Sifre))
             {
                 HttpContext.Session.SetString("UserSession", user.Email);
+                HttpContext.Session.SetString("UserAd", user.Ad ?? "");      
+                HttpContext.Session.SetString("UserSoyad", user.Soyad ?? ""); 
 
                 if (user.IsAdmin == true)
                 {
                     HttpContext.Session.SetString("AdminRole", "Admin");
                 }
+                Loglayici.Kaydet(_context, user.Email, user.Ad, user.Soyad, "Giriş", "Sisteme giriş yapıldı.");
 
                 return RedirectToAction("Index", "Home");
             }
@@ -44,9 +54,8 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Controllers
             }
         }
 
-        
         [HttpGet]
-        public IActionResult Register() //Kayıt Olma Kısmı sayfası
+        public IActionResult Register()
         {
             return View();
         }
@@ -54,16 +63,17 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Controllers
         [HttpPost]
         public IActionResult Register(Kullanici yeniKullanici)
         {
-            
-            yeniKullanici.IsAdmin = false;  //kayıt olan account otomatik olarak standart profil oluyor
+            // Admin olamaz, standart kullanıcı
+            yeniKullanici.IsAdmin = false;
 
-           
             var emailVarMi = _context.Kullanicilar.Any(u => u.Email == yeniKullanici.Email);
             if (emailVarMi)
             {
                 ViewBag.Message = "Bu Email adresi zaten kayıtlı!";
                 return View();
             }
+
+            yeniKullanici.Sifre = SifreIslemleri.Sifrele(yeniKullanici.Sifre);
 
             _context.Kullanicilar.Add(yeniKullanici);
             _context.SaveChanges();
@@ -73,7 +83,18 @@ namespace Akıllı_Kütüphane_Yönetim_Sistemi.Controllers
 
         public IActionResult Logout()
         {
-            HttpContext.Session.Clear();
+            // Çıkış yapmadan önce hafızadaki bilgileri alalım log işlemleri için
+            var email = HttpContext.Session.GetString("UserSession");
+            var ad = HttpContext.Session.GetString("UserAd") ?? "";      
+            var soyad = HttpContext.Session.GetString("UserSoyad") ?? ""; 
+
+            if (email != null)
+            {
+               
+                Loglayici.Kaydet(_context, email, ad, soyad, "Çıkış", "Kullanıcı çıkış yaptı.");
+            }
+
+            HttpContext.Session.Clear(); 
             return RedirectToAction("Login");
         }
     }
